@@ -146,7 +146,7 @@ export default function Upload() {
 
       {/* Step 1: 選擇大類 */}
       {step === 1 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div className="grid-step1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
           {([['lidar', '光達資料', 'LiDAR', '點雲、風場、大氣邊界層等光達量測資料'] ,
              ['uav',   '無人機資料', 'UAV',  '感測器、飛行軌跡、影像、氣象等無人機資料']] as [DataCategory, string, string, string][]).map(
             ([val, title, eng, desc]) => (
@@ -401,6 +401,7 @@ export default function Upload() {
       {/* History */}
       <Card>
         <h3 style={{ fontSize: 15, fontWeight: 600, color: '#374151', marginBottom: 16 }}>上傳歷史記錄</h3>
+        <div className="table-wrap">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
@@ -422,6 +423,7 @@ export default function Upload() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );

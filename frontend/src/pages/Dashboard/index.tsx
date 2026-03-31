@@ -31,7 +31,7 @@ export default function Dashboard() {
       <Header title="系統儀表板" subtitle="桃園市空氣污染監測後台管控系統" />
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {stats.map(({ label, value, unit, Icon }) => (
           <Card key={label} padding={20}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -51,7 +51,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Data Sources */}
         <Card>
           <h3 style={{ fontSize: 15, fontWeight: 600, color: '#374151', marginBottom: 16 }}>資料來源狀態</h3>

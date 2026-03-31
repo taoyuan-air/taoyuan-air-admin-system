@@ -61,13 +61,32 @@ function UserBlock() {
   );
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   return (
+    <>
+      {/* 手機版遮罩 */}
+      {isOpen && (
+        <div
+          onClick={onToggle}
+          style={{
+            display: 'none',
+            position: 'fixed', inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            zIndex: 99,
+          }}
+          className="sidebar-overlay"
+        />
+      )}
     <aside
       style={{
         width: 220,
         minHeight: "100vh",
-        backgroundColor: "rgba(255,255,255,0.85)",
+        backgroundColor: "rgba(255,255,255,0.95)",
         borderRight: "1px solid rgba(106,190,116,0.2)",
         display: "flex",
         flexDirection: "column",
@@ -75,18 +94,25 @@ export default function Sidebar() {
         backdropFilter: "blur(10px)",
         position: "fixed",
         top: 0,
-        left: 0,
+        left: isOpen ? 0 : -220,
         bottom: 0,
         zIndex: 100,
+        transition: "left 0.25s ease",
       }}
     >
-      {/* Logo */}
+      {/* Logo — 點擊收合 */}
       <div
+        onClick={onToggle}
+        title="收合側欄"
         style={{
           padding: "24px 20px",
           borderBottom: "1px solid rgba(106,190,116,0.15)",
           marginBottom: 8,
+          cursor: "pointer",
+          transition: "background 0.15s",
         }}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(106,190,116,0.06)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div
@@ -98,19 +124,13 @@ export default function Sidebar() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
             <Leaf size={18} color="#fff" />
           </div>
           <div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#374151",
-                lineHeight: 1.2,
-              }}
-            >
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", lineHeight: 1.2 }}>
               Taoyuan-Air
             </div>
             <div style={{ fontSize: 11, color: "#6abe74", fontWeight: 600 }}>
@@ -155,5 +175,8 @@ export default function Sidebar() {
       {/* User info */}
       <UserBlock />
     </aside>
+
+
+    </>
   );
 }

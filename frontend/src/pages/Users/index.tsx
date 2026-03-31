@@ -158,7 +158,7 @@ export default function Users() {
       <Header title="使用者管理" subtitle="帳號管理、角色權限與上傳配額設定" />
 
       {/* Role filter */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
         {Object.entries(roleConfig).map(([key, cfg]) => {
           const count = users.filter(u => u.role === key).length;
           const isActive = filterRole === key;
@@ -185,6 +185,7 @@ export default function Users() {
       </div>
 
       <Card>
+        <div className="table-wrap">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
@@ -242,6 +243,7 @@ export default function Users() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
 
       {/* Modal */}
@@ -255,7 +257,9 @@ export default function Users() {
             backgroundColor: '#F4F2E9',
             borderRadius: 20,
             padding: 28,
-            width: 480,
+            width: 'min(480px, calc(100vw - 32px))',
+            maxHeight: 'calc(100vh - 40px)',
+            overflowY: 'auto',
             boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           }} onClick={e => e.stopPropagation()}>
 
