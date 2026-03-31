@@ -6,7 +6,9 @@ import {
   Radio,
   Users,
   Leaf,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 const navItems = [
   { path: "/", label: "儀表板", Icon: LayoutDashboard },
@@ -15,6 +17,49 @@ const navItems = [
   { path: "/stations", label: "測站管理", Icon: Radio },
   { path: "/users", label: "使用者管理", Icon: Users },
 ];
+
+function UserBlock() {
+  const { user, logout } = useAuth();
+  if (!user) return null;
+  return (
+    <div
+      style={{
+        margin: "0 12px",
+        padding: "12px",
+        backgroundColor: "rgba(106,190,116,0.08)",
+        borderRadius: 12,
+        border: "1px solid rgba(106,190,116,0.2)",
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>目前登入</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+        {user.fullName}
+      </div>
+      <div style={{ fontSize: 11, color: "#6abe74", marginBottom: 10 }}>
+        {user.roleName}
+        {user.organization && ` · ${user.organization}`}
+      </div>
+      <button
+        onClick={logout}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "5px 10px",
+          backgroundColor: "transparent",
+          border: "1px solid rgba(106,190,116,0.4)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: "#6b7280",
+          cursor: "pointer",
+        }}
+      >
+        <LogOut size={13} />
+        登出
+      </button>
+    </div>
+  );
+}
 
 export default function Sidebar() {
   return (
@@ -108,23 +153,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User info */}
-      <div
-        style={{
-          margin: "0 12px",
-          padding: "12px",
-          backgroundColor: "rgba(106,190,116,0.08)",
-          borderRadius: 12,
-          border: "1px solid rgba(106,190,116,0.2)",
-        }}
-      >
-        <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>
-          目前登入
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-          系統管理員
-        </div>
-        <div style={{ fontSize: 11, color: "#6abe74" }}>super_admin</div>
-      </div>
+      <UserBlock />
     </aside>
   );
 }
