@@ -22,3 +22,27 @@ body {
   background: rgba(106, 190, 116, 0.4);
   border-radius: 3px;
 }
+
+/* Responsive */
+@media (max-width: 767px) {
+  .sidebar-overlay {
+    display: block !important;
+  }
+
+  main {
+    padding: 20px 16px 20px 44px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-2 { grid-template-columns: 1fr !important; }
+  .table-wrap { overflow-x: auto; }
+}
+
+@media (max-width: 540px) {
+  .grid-4 { grid-template-columns: 1fr 1fr !important; }
+  .grid-3 { grid-template-columns: 1fr 1fr !important; }
+  .grid-step1 { grid-template-columns: 1fr !important; }
+}
