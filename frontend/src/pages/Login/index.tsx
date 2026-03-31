@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Leaf } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -124,7 +125,6 @@ export default function LoginPage() {
               padding: '3px 10px',
               backgroundColor: 'transparent',
               color: '#9ca3af',
-              border: '1px solid #d1d5db',
               border: 'none',
               borderRadius: 6,
               fontSize: 11,
