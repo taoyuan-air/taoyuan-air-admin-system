@@ -6,10 +6,10 @@ import Header from '../../components/Layout/Header';
 import StatusBadge from '../../components/StatusBadge';
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
-  super_admin:  { label: '超級管理員', color: '#6A8D73', bg: 'rgba(106,141,115,0.1)'  },
-  system_admin: { label: '系統管理員', color: '#5aab6a', bg: 'rgba(90,171,106,0.1)'  },
+  super_admin:  { label: '超級管理員', color: '#2d6a4f', bg: 'rgba(45,106,79,0.12)'   },
+  system_admin: { label: '系統管理員', color: '#52796f', bg: 'rgba(82,121,111,0.12)'  },
   data_manager: { label: '資料管理員', color: '#6abe74', bg: 'rgba(106,190,116,0.12)' },
-  readonly:     { label: '唯讀使用者', color: '#74c69d', bg: 'rgba(116,198,157,0.15)' },
+  readonly:     { label: '唯讀使用者', color: '#a0a98f', bg: 'rgba(160,169,143,0.15)' },
 };
 
 interface User {
@@ -276,7 +276,7 @@ export default function Users() {
 
             {/* Form */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
                 <div>
                   <label style={labelStyle}>姓名 *</label>
                   <input style={{ ...inputStyle, borderColor: errors.fullName ? '#6abe74' : 'rgba(0,0,0,0.12)' }}
@@ -301,7 +301,7 @@ export default function Users() {
                 {errors.email && <div style={{ fontSize: 11, color: '#6A8D73', marginTop: 4 }}>{errors.email}</div>}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16 }}>
                 <div>
                   <label style={labelStyle}>角色 *</label>
                   <Select
