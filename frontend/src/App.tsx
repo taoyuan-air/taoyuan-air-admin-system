@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AppDataProvider } from './contexts/AppDataContext';
 import Sidebar from './components/Layout/Sidebar';
 import { Menu } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
@@ -65,7 +66,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <AppDataProvider>
+          <AppContent />
+        </AppDataProvider>
       </AuthProvider>
     </BrowserRouter>
   );
