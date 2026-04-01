@@ -3,19 +3,12 @@ import { List, LayoutGrid, MapPin } from 'lucide-react';
 import Card from '../../components/Card';
 import Header from '../../components/Layout/Header';
 import StatusBadge from '../../components/StatusBadge';
-
-const mockStations = [
-  { id: 'S001', name: '桃園測站', type: '一般測站', district: '桃園區', lat: 24.9936, lon: 121.3010, operator: '環境部',  active: true,  score: 95, calibration: '2025-01-10' },
-  { id: 'S002', name: '中壢測站', type: '一般測站', district: '中壢區', lat: 24.9600, lon: 121.2247, operator: '環境部',  active: true,  score: 88, calibration: '2025-01-08' },
-  { id: 'S003', name: '觀音測站', type: '工業測站', district: '觀音區', lat: 25.0167, lon: 121.1000, operator: '環境部',  active: true,  score: 72, calibration: '2024-12-20' },
-  { id: 'S004', name: '平鎮測站', type: '一般測站', district: '平鎮區', lat: 24.9500, lon: 121.2167, operator: '環境部',  active: true,  score: 91, calibration: '2025-01-05' },
-  { id: 'S005', name: '龍潭測站', type: '背景測站', district: '龍潭區', lat: 24.8667, lon: 121.2167, operator: '環境部',  active: false, score: 60, calibration: '2024-11-15' },
-  { id: 'S006', name: '大園光達站', type: '光達測站', district: '大園區', lat: 25.0667, lon: 121.1833, operator: '研究團隊', active: true,  score: 85, calibration: '2025-01-12' },
-];
+import { useAppData } from '../../contexts/AppDataContext';
 
 const scoreColor = (score: number) => score >= 90 ? '#6abe74' : score >= 75 ? '#888' : '#aaa';
 
 export default function Stations() {
+  const { stations } = useAppData();
   const [view, setView] = useState<'list' | 'grid'>('list');
 
   return (
@@ -57,7 +50,7 @@ export default function Stations() {
               </tr>
             </thead>
             <tbody>
-              {mockStations.map(s => (
+              {stations.map(s => (
                 <tr key={s.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                   <td style={{ padding: '12px', fontSize: 12, color: '#999', fontFamily: 'monospace' }}>{s.id}</td>
                   <td style={{ padding: '12px', fontSize: 13, fontWeight: 600, color: '#374151' }}>{s.name}</td>
@@ -86,7 +79,7 @@ export default function Stations() {
         </Card>
       ) : (
         <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-          {mockStations.map(s => (
+          {stations.map(s => (
             <Card key={s.id} padding={20}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <div>
