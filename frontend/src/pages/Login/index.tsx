@@ -35,7 +35,7 @@ export default function LoginPage() {
         backgroundColor: '#fff',
         borderRadius: 16,
         padding: '40px 36px',
-        width: 360,
+        width: 'min(360px, calc(100vw - 32px))',
         boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
         border: '1px solid rgba(106,190,116,0.2)',
       }}>

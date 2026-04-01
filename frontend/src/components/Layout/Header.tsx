@@ -14,9 +14,11 @@ export default function Header({ title, subtitle }: HeaderProps) {
   return (
     <header style={{
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
+      gap: 12,
       marginBottom: 28,
+      flexWrap: 'wrap',
     }}>
       <div>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#374151', marginBottom: 2 }}>{title}</h1>

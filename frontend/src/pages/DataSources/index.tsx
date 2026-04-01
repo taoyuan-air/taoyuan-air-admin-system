@@ -45,9 +45,9 @@ export default function DataSources() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 700, color: '#6abe74',
                 }}>{src.type}</div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>{src.name}</div>
-                  <div style={{ fontSize: 12, color: '#999', marginTop: 2, fontFamily: 'monospace' }}>{src.endpoint}</div>
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 2, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.endpoint}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -61,6 +61,7 @@ export default function DataSources() {
               padding: '12px 0',
               borderTop: '1px solid rgba(0,0,0,0.05)',
               fontSize: 12, color: '#666',
+              flexWrap: 'wrap',
             }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <RefreshCw size={12} color="#6abe74" />

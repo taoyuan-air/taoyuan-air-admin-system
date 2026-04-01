@@ -14,7 +14,7 @@ const MOCK_USERS: (User & { password: string })[] = [
   {
     userId: 1,
     username: 'admin',
-    password: 'REMOVED_REVOKED_SECRET',
+    password: import.meta.env.VITE_MOCK_ADMIN_PASSWORD as string,
     email: 'admin@taoyuan-air.gov.tw',
     fullName: '系統管理員',
     roleCode: 'super_admin',
@@ -27,7 +27,7 @@ const MOCK_USERS: (User & { password: string })[] = [
   {
     userId: 2,
     username: 'manager',
-    password: 'REMOVED_REVOKED_SECRET',
+    password: import.meta.env.VITE_MOCK_MANAGER_PASSWORD as string,
     email: 'manager@taoyuan-air.gov.tw',
     fullName: '資料管理員',
     roleCode: 'data_manager' as RoleCode,

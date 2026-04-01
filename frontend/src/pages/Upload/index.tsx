@@ -255,9 +255,10 @@ export default function Upload() {
         <Card style={{ marginBottom: 20 }}>
           {/* 已選摘要 */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
+            display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 16,
             padding: '10px 14px', backgroundColor: 'rgba(106,190,116,0.06)',
             borderRadius: 10, fontSize: 12, color: '#6b7280',
+            flexWrap: 'wrap',
           }}>
             <span style={{ fontWeight: 600, color: '#374151' }}>
               {category === 'lidar' ? '光達資料' : '無人機資料'} › {currentConfig.label}
@@ -309,7 +310,7 @@ export default function Upload() {
                     borderRadius: 12,
                     border: `1px solid ${uf.status === 'completed' ? 'rgba(106,190,116,0.25)' : uf.status === 'failed' ? 'rgba(239,68,68,0.2)' : 'rgba(106,190,116,0.1)'}`,
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: uf.status === 'uploading' ? 8 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: uf.status === 'uploading' ? 8 : 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {uf.status === 'completed' && <CheckCircle2 size={15} color="#6abe74" />}
                         {uf.status === 'failed' && <XCircle size={15} color="#ef4444" />}
@@ -343,7 +344,8 @@ export default function Upload() {
                   marginTop: 16, padding: '16px 20px', borderRadius: 12,
                   backgroundColor: failCount === 0 ? 'rgba(106,190,116,0.08)' : 'rgba(251,191,36,0.08)',
                   border: `1px solid ${failCount === 0 ? 'rgba(106,190,116,0.3)' : 'rgba(251,191,36,0.3)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                  flexWrap: 'wrap', gap: 12,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <CheckCircle2 size={20} color={failCount === 0 ? '#6abe74' : '#f59e0b'} />

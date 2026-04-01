@@ -22,7 +22,7 @@ export default function Stations() {
     <div>
       <Header title="測站管理" subtitle="監測測站狀態、設備維護與資料品質管理" />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           {(['list', 'grid'] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
