@@ -25,10 +25,10 @@ interface User {
 }
 
 const initialUsers: User[] = [
-  { id: 1, username: 'admin',    fullName: '系統管理員', email: 'admin@taoyuan.gov.tw', role: 'super_admin',  org: '桃園市政府', active: true,  lastLogin: '2025-01-15 10:30', quota: 100 },
-  { id: 2, username: 'sys_mgr',  fullName: '王大明',    email: 'wang@taoyuan.gov.tw',  role: 'system_admin', org: '桃園市政府', active: true,  lastLogin: '2025-01-15 09:15', quota: 50 },
-  { id: 3, username: 'data_mgr', fullName: '李小華',    email: 'lee@taoyuan.gov.tw',   role: 'data_manager', org: '桃園市政府', active: true,  lastLogin: '2025-01-14 16:00', quota: 30 },
-  { id: 4, username: 'readonly', fullName: '張唯讀',    email: 'zhang@taoyuan.gov.tw', role: 'readonly',     org: '桃園市政府', active: false, lastLogin: '2025-01-10 11:00', quota: 5 },
+  { id: 1, username: 'admin',    fullName: '系統管理員', email: 'admin@taoyuan.gov.tw', role: 'super_admin',  org: '桃園市政府', active: true,  lastLogin: '2026-04-01 08:30', quota: 100 },
+  { id: 2, username: 'sys_mgr',  fullName: '王大明',    email: 'wang@taoyuan.gov.tw',  role: 'system_admin', org: '桃園市政府', active: true,  lastLogin: '2026-04-01 07:15', quota: 50 },
+  { id: 3, username: 'data_mgr', fullName: '李小華',    email: 'lee@taoyuan.gov.tw',   role: 'data_manager', org: '桃園市政府', active: true,  lastLogin: '2026-03-31 16:00', quota: 30 },
+  { id: 4, username: 'readonly', fullName: '張唯讀',    email: 'zhang@taoyuan.gov.tw', role: 'readonly',     org: '桃園市政府', active: false, lastLogin: '2026-03-20 11:00', quota: 5 },
 ];
 
 const roleOptions = Object.entries(roleConfig).map(([value, cfg]) => ({ value, label: cfg.label, color: cfg.color, bg: cfg.bg }));
