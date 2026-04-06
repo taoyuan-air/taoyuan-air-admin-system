@@ -5,7 +5,7 @@ import {
   Database,
   Radio,
   Users,
-  Leaf,
+  Wind,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -127,7 +127,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
               flexShrink: 0,
             }}
           >
-            <Leaf size={18} color="#fff" />
+            <Wind size={18} color="#fff" />
           </div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", lineHeight: 1.2 }}>
