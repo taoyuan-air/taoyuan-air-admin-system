@@ -1,44 +1,177 @@
-## 快速開始
+# taoyuan-air-admin
 
-### 環境需求
+桃園空品後台管理系統（前後端分離）。
 
-- **Node.js 18+**
-- **npm**
+本專案包含：
 
-### 安裝與運行
+- `frontend/`: React + Vite 前端（預設 `http://localhost:5173`）
+- `backend/`: Express + PostgreSQL 後端 API（預設 `http://localhost:3001`）
 
-```bash
-# 安裝依賴
-npm install
+## 專案架構
 
-# 啟動開發伺服器
-npm run dev
+```text
+taoyuan-air-admin/
+├─ frontend/                 # React 前端
+│  ├─ src/
+│  └─ vite.config.ts
+├─ backend/                  # Express 後端
+│  ├─ src/
+│  ├─ migrations/
+│  └─ .env
+├─ docs/
+└─ README.md
 ```
 
 ## 功能模組
 
-| 模組         | 說明                                                                   |
-| ------------ | ---------------------------------------------------------------------- |
-| 儀表板       | 系統狀態總覽、資料來源狀態、最近上傳記錄、系統資源使用                 |
-| 資料上傳     | 光達（LiDAR）與無人機（UAV）資料拖拽上傳、批次上傳、進度追蹤、歷史記錄 |
-| 資料來源管理 | API 設定、同步頻率、連線測試、同步日誌                                 |
-| 測站管理     | 測站列表與卡片檢視、資料品質評分、設備校正記錄                         |
-| 使用者管理   | 帳號管理、角色權限、上傳配額設定                                       |
+| 模組         | 說明                                               |
+| ------------ | -------------------------------------------------- |
+| 儀表板       | 系統狀態總覽、資料來源狀態、最近上傳記錄、資源使用 |
+| 資料上傳     | LiDAR / UAV 檔案上傳、進度追蹤（SSE）、歷史記錄    |
+| 資料來源管理 | API 設定、同步頻率、連線測試、同步日誌             |
+| 測站管理     | 測站列表、資料品質評分、設備校正記錄               |
+| 使用者管理   | 帳號管理、角色權限、上傳配額                       |
 
-## 使用者角色
+## 環境需求
 
-| 角色       | 說明                     |
-| ---------- | ------------------------ |
-| 超級管理員 | 系統全域管理，所有權限   |
-| 系統管理員 | 資料與配置管理、上傳權限 |
-| 資料管理員 | 資料內容管理、上傳權限   |
-| 唯讀使用者 | 資料查看與報表下載       |
+- Node.js 18+
+- npm
+- Docker Desktop（如果要跑 PostgreSQL 容器）
+
+## 後端環境變數
+
+請確認 `backend/.env` 至少包含以下內容：
+
+```env
+PORT=
+DB_HOST=
+DB_PORT=
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+JWT_SECRET=
+UPLOAD_DIR=
+```
+
+## 一次性初始化
+
+### 1. 安裝依賴
+
+```bash
+cd backend
+npm install
+
+cd ../frontend
+npm install
+```
+
+### 2. 準備資料庫
+
+如果你是使用前台專案 `taoyuan-air` 提供 DB（推薦）：
+
+```bash
+cd ../taoyuan-air
+docker-compose up -d
+```
+
+### 3. 執行 migration（只需一次）
+
+```bash
+cd ../taoyuan-air-admin/backend
+npm run migrate
+```
+
+## 日常啟動（完整前後端測試）
+
+請開三個終端機，依序執行。
+
+### 終端機 A：啟動 DB（Docker）
+
+```bash
+cd taoyuan-air
+docker-compose up -d
+```
+
+### 終端機 B：啟動 backend
+
+```bash
+cd taoyuan-air-admin/backend
+npm run dev
+```
+
+成功訊息：
+
+```text
+Backend running on http://localhost:3001
+```
+
+健康檢查：
+
+```bash
+curl http://localhost:3001/health
+```
+
+應回傳：
+
+```json
+{ "status": "ok" }
+```
+
+### 終端機 C：啟動 frontend
+
+```bash
+cd taoyuan-air-admin/frontend
+npm run dev
+```
+
+開啟：
+
+```text
+http://localhost:5173
+```
+
+## 完整測試流程（推薦）
+
+### 1. 登入測試
+
+可用帳號：
+
+| 帳號    | 密碼       | 角色       |
+| ------- | ---------- | ---------- |
+| admin   | REMOVED_REVOKED_SECRET   | 超級管理員 |
+| manager | REMOVED_REVOKED_SECRET | 資料管理員 |
+
+### 2. API 測試（可選）
+
+- `GET /health`
+- `POST /api/auth/login`
+- `POST /api/uploads`
+- `GET /api/uploads/progress/:uploadId`（SSE）
+- `GET /api/uploads/history`
 
 ## 開發指令
 
+### frontend
+
 ```bash
-npm run dev      # 啟動開發伺服器
-npm run build    # 建置正式版本
-npm run preview  # 預覽建置結果
-npm run lint     # 執行 ESLint 檢查
+cd frontend
+npm run dev
+npm run build
+npm run preview
+npm run lint
 ```
+
+### backend
+
+```bash
+cd backend
+npm run dev
+npm run build
+npm start
+npm run migrate
+```
+
+## 備註
+
+- 關機重開後，不需要重跑 migration
+- 只要重新執行「日常啟動」三步驟即可
