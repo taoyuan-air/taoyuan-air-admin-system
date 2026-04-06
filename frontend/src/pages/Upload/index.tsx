@@ -1,4 +1,10 @@
-import { useState, useRef, type DragEvent, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  type DragEvent,
+  type ChangeEvent,
+} from "react";
 import {
   CloudUpload,
   FileText,
@@ -18,6 +24,9 @@ import Card from "../../components/Card";
 import Header from "../../components/Layout/Header";
 import StatusBadge from "../../components/StatusBadge";
 import { useAppData } from "../../contexts/AppDataContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { uploadService } from "../../services/uploadService";
+import { useUploadProgress } from "../../hooks/useUploadProgress";
 
 type DataCategory = "lidar" | "uav";
 type LidarSubType = "point_cloud" | "wind_field" | "boundary_layer";
@@ -101,6 +110,7 @@ interface ValidationError {
 
 interface UploadingFile {
   id: string;
+  uploadId: number;
   file: File;
   progress: number;
   status: "uploading" | "completed" | "failed";
@@ -112,9 +122,9 @@ interface UploadResult {
   status: "completed" | "failed";
 }
 
-
 export default function Upload() {
   const { uploadHistory: history, setUploadHistory: setHistory } = useAppData();
+  const { token, user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [category, setCategory] = useState<DataCategory | null>(null);
   const [lidarType, setLidarType] = useState<LidarSubType>("point_cloud");
@@ -127,7 +137,14 @@ export default function Upload() {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
     [],
   );
+  const [activeUploadIds, setActiveUploadIds] = useState<number[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const errTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const uploadIdMapRef = useRef<Map<number, { id: string; file: File }>>(
+    new Map(),
+  );
+  const finishedCountRef = useRef(0);
+  const totalCountRef = useRef(0);
 
   const [hoveredCategory, setHoveredCategory] = useState<DataCategory | null>(
     null,
@@ -140,6 +157,44 @@ export default function Upload() {
       : category === "uav"
         ? uavConfig[uavType]
         : null;
+
+  const currentConfigRef = useRef(currentConfig);
+  currentConfigRef.current = currentConfig;
+
+  useEffect(() => {
+    if (!token) return;
+
+    let cancelled = false;
+    uploadService
+      .getHistory(token, { page: "1", limit: "50" })
+      .then((res) => {
+        if (cancelled) return;
+
+        setHistory(
+          res.records.map((record) => ({
+            id: record.uploadId,
+            name: record.fileName,
+            type: record.dataType,
+            size: formatSize(record.fileSize),
+            status:
+              record.uploadStatus === "completed"
+                ? "completed"
+                : record.uploadStatus === "failed"
+                  ? "failed"
+                  : "processing",
+            time: record.createdAt.replace("T", " ").slice(0, 16),
+            user: user?.username ?? "admin",
+          })),
+        );
+      })
+      .catch(() => {
+        // Keep the seeded mock history if the backend is unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, setHistory]);
 
   const formatSize = (bytes: number) =>
     bytes < 1024 * 1024
@@ -217,88 +272,134 @@ export default function Upload() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Simulate upload with per-file progress bars, then jump to step 4
-  const startUpload = () => {
-    if (stagedFiles.length === 0 || isUploading) return;
+  useUploadProgress(activeUploadIds, token, (event) => {
+    const info = uploadIdMapRef.current.get(event.uploadId);
+    if (!info) return;
+
+    setUploadingFiles((prev) =>
+      prev.map((f) =>
+        f.uploadId === event.uploadId
+          ? {
+              ...f,
+              progress: event.progress,
+              status: event.status === "cancelled" ? "failed" : event.status,
+            }
+          : f,
+      ),
+    );
+
+    if (
+      event.status === "completed" ||
+      event.status === "failed" ||
+      event.status === "cancelled"
+    ) {
+      if (event.status === "completed") {
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        setHistory((prev) => [
+          {
+            id: event.uploadId,
+            name: info.file.name,
+            type: currentConfigRef.current?.label ?? "未知",
+            size: formatSize(info.file.size),
+            status: "completed",
+            time: timeStr,
+            user: user?.username ?? "admin",
+          },
+          ...prev,
+        ]);
+      }
+
+      finishedCountRef.current += 1;
+      if (finishedCountRef.current >= totalCountRef.current) {
+        setUploadingFiles((prev) => {
+          const finalResults: UploadResult[] = prev.map((f) => ({
+            id: f.id,
+            file: f.file,
+            status: f.status === "completed" ? "completed" : "failed",
+          }));
+          setTimeout(() => {
+            setResults(finalResults);
+            setIsUploading(false);
+            setStep(4);
+            setActiveUploadIds([]);
+          }, 600);
+          return prev;
+        });
+      }
+    }
+  });
+
+  // Submit real upload request, then track progress from backend SSE
+  const startUpload = async () => {
+    if (stagedFiles.length === 0 || isUploading || !token || !category) return;
     setIsUploading(true);
+    setUploadError(null);
 
     const pending = [...stagedFiles];
 
     // Initialise all files as uploading at 0%
     const initial: UploadingFile[] = pending.map((sf) => ({
       id: sf.id,
+      uploadId: 0,
       file: sf.file,
       progress: 0,
       status: "uploading",
     }));
     setUploadingFiles(initial);
+    setStep(3);
 
-    const uploadResults: UploadResult[] = [];
-    let finishedCount = 0;
+    const dataType = category === "lidar" ? lidarType : uavType;
 
-    pending.forEach((sf) => {
-      const willSucceed = Math.random() > 0.1;
-      let progress = 0;
+    try {
+      const response = await uploadService.uploadFiles(
+        pending.map((sf) => sf.file),
+        category,
+        dataType,
+        token,
+      );
 
-      const interval = setInterval(() => {
-        // Random increment, bigger jumps early, slower near the end
-        const remaining = 100 - progress;
-        const increment = Math.random() * Math.min(remaining * 0.4, 25);
-        progress = Math.min(progress + increment, willSucceed ? 99 : 72); // failed ones stall
+      const ids = response.uploadIds;
+      uploadIdMapRef.current.clear();
+      finishedCountRef.current = 0;
+      totalCountRef.current = ids.length;
 
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.id === sf.id ? { ...f, progress: Math.round(progress) } : f,
-          ),
-        );
-      }, 250);
+      setUploadingFiles((prev) =>
+        prev.map((f, i) => ({
+          ...f,
+          uploadId: ids[i] ?? 0,
+        })),
+      );
 
-      // Finish after random duration
-      const duration = 1500 + Math.random() * 2000;
-      setTimeout(() => {
-        clearInterval(interval);
-        const status: "completed" | "failed" = willSucceed
-          ? "completed"
-          : "failed";
-
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.id === sf.id
-              ? { ...f, progress: willSucceed ? 100 : f.progress, status }
-              : f,
-          ),
-        );
-
-        uploadResults.push({ id: sf.id, file: sf.file, status });
-
-        if (willSucceed) {
-          const now = new Date();
-          const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-          setHistory((prev) => [
-            {
-              id: Date.now() + Math.random(),
-              name: sf.file.name,
-              type: currentConfig?.label ?? "未知",
-              size: formatSize(sf.file.size),
-              status: "completed",
-              time: timeStr,
-              user: "admin",
-            },
-            ...prev,
-          ]);
+      pending.forEach((sf, i) => {
+        if (ids[i] != null) {
+          uploadIdMapRef.current.set(ids[i], { id: sf.id, file: sf.file });
         }
+      });
 
-        finishedCount++;
-        if (finishedCount === pending.length) {
-          // Small delay so user sees 100% before jumping
-          setTimeout(() => {
-            setResults(uploadResults);
-            setIsUploading(false);
-            setStep(4);
-          }, 600);
-        }
-      }, duration);
-    });
+      setActiveUploadIds(ids);
+    } catch (err: unknown) {
+      const e = err as Error & {
+        details?: { fileName: string; reason: string; detail: string }[];
+      };
+      setUploadError(e.message ?? "上傳失敗");
+
+      if (e.details?.length) {
+        setValidationErrors(
+          e.details.map((d) => ({
+            fileName: d.fileName,
+            reason: "ext" as const,
+            detail: d.detail,
+          })),
+        );
+      }
+
+      setUploadingFiles((prev) =>
+        prev.map((f) => ({ ...f, status: "failed" })),
+      );
+      setIsUploading(false);
+      setStep(3);
+    }
   };
 
   const resetAll = () => {
@@ -309,6 +410,11 @@ export default function Upload() {
     setIsUploading(false);
     setStep(1);
     setCategory(null);
+    setActiveUploadIds([]);
+    setUploadError(null);
+    uploadIdMapRef.current.clear();
+    finishedCountRef.current = 0;
+    totalCountRef.current = 0;
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -805,6 +911,23 @@ export default function Upload() {
                 style={{ display: "none" }}
                 onChange={handleFileChange}
               />
+            </div>
+          )}
+
+          {uploadError && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: "12px 16px",
+                borderRadius: 12,
+                backgroundColor: "rgba(239,68,68,0.05)",
+                border: "1px solid rgba(239,68,68,0.25)",
+                color: "#dc2626",
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              {uploadError}
             </div>
           )}
 

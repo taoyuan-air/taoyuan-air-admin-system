@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Leaf } from 'lucide-react';
+import { Wind } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginPage() {
@@ -47,7 +47,7 @@ export default function LoginPage() {
             borderRadius: 12,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Leaf size={20} color="#fff" />
+            <Wind size={20} color="#fff" />
           </div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#374151' }}>Taoyuan-Air</div>
