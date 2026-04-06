@@ -98,6 +98,71 @@ const uavConfig: Record<UAVSubType, SubTypeConfig> = {
   },
 };
 
+const DATA_TYPE_LABELS: Record<string, string> = {
+  point_cloud: "點雲資料",
+  wind_field: "風場資料",
+  boundary_layer: "大氣邊界層",
+  sensor: "感測器資料",
+  flight_path: "飛行軌跡",
+  imagery: "影像資料",
+  meteorological: "氣象資料",
+};
+
+function repairMojibakeText(value: string): string {
+  const suspicious = /[ÃÂÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÙÚÛÜàáâãäåæèéêëìíîïòóôõùúûü�]/.test(
+    value,
+  );
+  if (!suspicious) return value;
+
+  try {
+    const repaired = decodeURIComponent(escape(value));
+    return repaired !== value ? repaired : value;
+  } catch {
+    return value;
+  }
+}
+
+function parseHistoryDate(value: string | Date): Date {
+  if (value instanceof Date) return value;
+
+  const trimmed = value.trim();
+  const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed);
+
+  // Backend timestamps are sometimes returned without timezone info;
+  // treat those as UTC so the UI can render Taipei time correctly.
+  const normalized = hasTimezone ? trimmed : trimmed.replace(" ", "T") + "Z";
+
+  return new Date(normalized);
+}
+
+function formatHistoryTime(value: string | Date): string {
+  const date = parseHistoryDate(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  const taipei = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  const year = taipei.getUTCFullYear();
+  const month = String(taipei.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(taipei.getUTCDate()).padStart(2, "0");
+  const hour = String(taipei.getUTCHours()).padStart(2, "0");
+  const minute = String(taipei.getUTCMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+function getHistoryDataTypeLabel(
+  dataCategory: string,
+  dataType: string,
+): string {
+  return (
+    DATA_TYPE_LABELS[dataType] ??
+    (dataCategory === "lidar"
+      ? "光達資料"
+      : dataCategory === "uav"
+        ? "無人機資料"
+        : dataType)
+  );
+}
+
 interface StagedFile {
   id: string;
   file: File;
@@ -174,8 +239,8 @@ export default function Upload() {
         setHistory(
           res.records.map((record) => ({
             id: record.uploadId,
-            name: record.fileName,
-            type: record.dataType,
+            name: repairMojibakeText(record.fileName),
+            type: getHistoryDataTypeLabel(record.dataCategory, record.dataType),
             size: formatSize(record.fileSize),
             status:
               record.uploadStatus === "completed"
@@ -183,7 +248,7 @@ export default function Upload() {
                 : record.uploadStatus === "failed"
                   ? "failed"
                   : "processing",
-            time: record.createdAt.replace("T", " ").slice(0, 16),
+            time: formatHistoryTime(record.createdAt),
             user: user?.username ?? "admin",
           })),
         );
@@ -296,11 +361,11 @@ export default function Upload() {
     ) {
       if (event.status === "completed") {
         const now = new Date();
-        const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const timeStr = formatHistoryTime(now);
         setHistory((prev) => [
           {
             id: event.uploadId,
-            name: info.file.name,
+            name: repairMojibakeText(info.file.name),
             type: currentConfigRef.current?.label ?? "未知",
             size: formatSize(info.file.size),
             status: "completed",
@@ -394,11 +459,11 @@ export default function Upload() {
 
           if (willSucceed) {
             const now = new Date();
-            const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+            const timeStr = formatHistoryTime(now);
             setHistory((prev) => [
               {
                 id: Date.now() + Math.random(),
-                name: sf.file.name,
+                name: repairMojibakeText(sf.file.name),
                 type: currentConfigRef.current?.label ?? "未知",
                 size: formatSize(sf.file.size),
                 status: "completed",
