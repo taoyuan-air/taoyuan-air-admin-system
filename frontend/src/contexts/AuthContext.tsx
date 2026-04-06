@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import type { User, RoleCode } from "../types";
-import { apiUrl } from "../config/api";
+import { apiUrl, isDemoMode } from "../config/api";
 
 interface AuthContextType {
   user: User | null;
@@ -58,17 +58,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     if (!found) throw new Error("帳號或密碼錯誤");
 
+    const { password: _pw, ...userWithoutPassword } = found;
+
+    // Demo 模式不打後端 API，讓前端在 Vercel 也能展示
+    if (isDemoMode) {
+      const demoToken = "demo-token";
+      setUser(userWithoutPassword);
+      setToken(demoToken);
+      sessionStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));
+      sessionStorage.setItem("auth_token", demoToken);
+      return;
+    }
+
     // 向後端取得真實 JWT
-    const res = await fetch(apiUrl("/api/auth/login"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(apiUrl("/api/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+    } catch {
+      throw new Error("無法連線到後端 API，請確認 backend 已啟動。");
+    }
 
     if (!res.ok) throw new Error("帳號或密碼錯誤");
     const { token: jwt } = (await res.json()) as { token: string };
 
-    const { password: _pw, ...userWithoutPassword } = found;
     setUser(userWithoutPassword);
     setToken(jwt);
     sessionStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));

@@ -171,6 +171,33 @@ npm start
 npm run migrate
 ```
 
+## Demo 模式與真實 API 模式切換
+
+前端支援雙模式：
+
+- `VITE_DEMO_MODE=true`：展示模式（不打後端 API，適合 Vercel 只看畫面）
+- `VITE_DEMO_MODE=false`：實作模式（連真實後端 API）
+
+### 本地開發（真實 API）
+
+在 `frontend/.env.local` 設定：
+
+```env
+VITE_DEMO_MODE=false
+# 本地通常可留空，使用 Vite proxy 轉到 localhost:3001
+VITE_API_BASE_URL=
+```
+
+### Vercel 展示（不部署 backend 也可看畫面）
+
+在 Vercel Project Settings -> Environment Variables 設定：
+
+```env
+VITE_DEMO_MODE=true
+```
+
+此模式下登入與上傳會走前端 mock 流程，不依賴後端服務。
+
 ## 備註
 
 - 關機重開後，不需要重跑 migration

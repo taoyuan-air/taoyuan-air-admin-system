@@ -27,6 +27,7 @@ import { useAppData } from "../../contexts/AppDataContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { uploadService } from "../../services/uploadService";
 import { useUploadProgress } from "../../hooks/useUploadProgress";
+import { isDemoMode } from "../../config/api";
 
 type DataCategory = "lidar" | "uav";
 type LidarSubType = "point_cloud" | "wind_field" | "boundary_layer";
@@ -162,7 +163,7 @@ export default function Upload() {
   currentConfigRef.current = currentConfig;
 
   useEffect(() => {
-    if (!token) return;
+    if (isDemoMode || !token) return;
 
     let cancelled = false;
     uploadService
@@ -194,7 +195,7 @@ export default function Upload() {
     return () => {
       cancelled = true;
     };
-  }, [token, setHistory]);
+  }, [token, setHistory, user?.username]);
 
   const formatSize = (bytes: number) =>
     bytes < 1024 * 1024
@@ -272,7 +273,7 @@ export default function Upload() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  useUploadProgress(activeUploadIds, token, (event) => {
+  useUploadProgress(isDemoMode ? [] : activeUploadIds, token, (event) => {
     const info = uploadIdMapRef.current.get(event.uploadId);
     if (!info) return;
 
@@ -332,7 +333,12 @@ export default function Upload() {
 
   // Submit real upload request, then track progress from backend SSE
   const startUpload = async () => {
-    if (stagedFiles.length === 0 || isUploading || !token || !category) return;
+    if (stagedFiles.length === 0 || isUploading || !category) return;
+    const authToken = token ?? "";
+    if (!isDemoMode && !authToken) {
+      setUploadError("尚未登入，請先重新登入後再上傳。");
+      return;
+    }
     setIsUploading(true);
     setUploadError(null);
 
@@ -349,6 +355,74 @@ export default function Upload() {
     setUploadingFiles(initial);
     setStep(3);
 
+    if (isDemoMode) {
+      const uploadResults: UploadResult[] = [];
+      let finishedCount = 0;
+
+      pending.forEach((sf) => {
+        const willSucceed = Math.random() > 0.1;
+        let progress = 0;
+
+        const interval = setInterval(() => {
+          const remaining = 100 - progress;
+          const increment = Math.random() * Math.min(remaining * 0.4, 25);
+          progress = Math.min(progress + increment, willSucceed ? 99 : 72);
+
+          setUploadingFiles((prev) =>
+            prev.map((f) =>
+              f.id === sf.id ? { ...f, progress: Math.round(progress) } : f,
+            ),
+          );
+        }, 250);
+
+        const duration = 1500 + Math.random() * 2000;
+        setTimeout(() => {
+          clearInterval(interval);
+          const status: "completed" | "failed" = willSucceed
+            ? "completed"
+            : "failed";
+
+          setUploadingFiles((prev) =>
+            prev.map((f) =>
+              f.id === sf.id
+                ? { ...f, progress: willSucceed ? 100 : f.progress, status }
+                : f,
+            ),
+          );
+
+          uploadResults.push({ id: sf.id, file: sf.file, status });
+
+          if (willSucceed) {
+            const now = new Date();
+            const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+            setHistory((prev) => [
+              {
+                id: Date.now() + Math.random(),
+                name: sf.file.name,
+                type: currentConfigRef.current?.label ?? "未知",
+                size: formatSize(sf.file.size),
+                status: "completed",
+                time: timeStr,
+                user: user?.username ?? "demo",
+              },
+              ...prev,
+            ]);
+          }
+
+          finishedCount += 1;
+          if (finishedCount === pending.length) {
+            setTimeout(() => {
+              setResults(uploadResults);
+              setIsUploading(false);
+              setStep(4);
+            }, 600);
+          }
+        }, duration);
+      });
+
+      return;
+    }
+
     const dataType = category === "lidar" ? lidarType : uavType;
 
     try {
@@ -356,7 +430,7 @@ export default function Upload() {
         pending.map((sf) => sf.file),
         category,
         dataType,
-        token,
+        authToken,
       );
 
       const ids = response.uploadIds;
