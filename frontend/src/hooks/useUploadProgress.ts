@@ -13,7 +13,10 @@ export function useUploadProgress(
   onUpdate: (event: ProgressEvent) => void,
 ) {
   const onUpdateRef = useRef(onUpdate);
-  onUpdateRef.current = onUpdate;
+
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
     if (!token || uploadIds.length === 0) return;
@@ -41,5 +44,5 @@ export function useUploadProgress(
     });
 
     return () => sources.forEach((es) => es.close());
-  }, [uploadIds.join(","), token]);
+  }, [uploadIds, token]);
 }
