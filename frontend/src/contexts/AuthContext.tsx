@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import type { User, RoleCode } from "../types";
@@ -58,7 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     if (!found) throw new Error("帳號或密碼錯誤");
 
-    const { password: _pw, ...userWithoutPassword } = found;
+    const userWithoutPassword: User = {
+      userId: found.userId,
+      username: found.username,
+      email: found.email,
+      fullName: found.fullName,
+      roleCode: found.roleCode,
+      roleName: found.roleName,
+      organization: found.organization,
+      uploadQuotaGb: found.uploadQuotaGb,
+      isActive: found.isActive,
+      createdAt: found.createdAt,
+    };
 
     // Demo 模式不打後端 API，讓前端在 Vercel 也能展示
     if (isDemoMode) {

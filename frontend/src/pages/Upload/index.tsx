@@ -124,29 +124,27 @@ function repairMojibakeText(value: string): string {
 
 function parseHistoryDate(value: string | Date): Date {
   if (value instanceof Date) return value;
-
-  const trimmed = value.trim();
-  const hasTimezone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed);
-
-  // Backend timestamps are sometimes returned without timezone info;
-  // treat those as UTC so the UI can render Taipei time correctly.
-  const normalized = hasTimezone ? trimmed : trimmed.replace(" ", "T") + "Z";
-
-  return new Date(normalized);
+  return new Date(value.trim().replace(" ", "T"));
 }
 
 function formatHistoryTime(value: string | Date): string {
   const date = parseHistoryDate(value);
   if (Number.isNaN(date.getTime())) return String(value);
 
-  const taipei = new Date(date.getTime() + 8 * 60 * 60 * 1000);
-  const year = taipei.getUTCFullYear();
-  const month = String(taipei.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(taipei.getUTCDate()).padStart(2, "0");
-  const hour = String(taipei.getUTCHours()).padStart(2, "0");
-  const minute = String(taipei.getUTCMinutes()).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
 
-  return `${year}-${month}-${day} ${hour}:${minute}`;
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
 }
 
 function getHistoryDataTypeLabel(
@@ -225,7 +223,16 @@ export default function Upload() {
         : null;
 
   const currentConfigRef = useRef(currentConfig);
-  currentConfigRef.current = currentConfig;
+
+  useEffect(() => {
+    currentConfigRef.current = currentConfig;
+  }, [currentConfig]);
+
+  function formatSize(bytes: number): string {
+    return bytes < 1024 * 1024
+      ? `${(bytes / 1024).toFixed(1)} KB`
+      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
 
   useEffect(() => {
     if (isDemoMode || !token) return;
@@ -261,11 +268,6 @@ export default function Upload() {
       cancelled = true;
     };
   }, [token, setHistory, user?.username]);
-
-  const formatSize = (bytes: number) =>
-    bytes < 1024 * 1024
-      ? `${(bytes / 1024).toFixed(1)} KB`
-      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
   // Validate then stage files — rejected files surface as inline errors
   const stageFiles = (files: File[]) => {
@@ -1601,7 +1603,7 @@ export default function Upload() {
                 </span>
                 {failCount > 0 && (
                   <>
-                    　
+                    {" "}
                     <span style={{ color: "#ef4444", fontWeight: 600 }}>
                       失敗 {failCount}
                     </span>
