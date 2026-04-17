@@ -1,6 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "./AuthContext";
+import { uploadService } from "../services/uploadService";
 
 export interface SourceRecord {
   id: string;
@@ -214,11 +216,91 @@ interface AppDataContextType {
 
 const AppDataContext = createContext<AppDataContextType | null>(null);
 
-export function AppDataProvider({ children }: { children: ReactNode }) {
+function AppDataProviderContent({ children }: { children: ReactNode }) {
+  const { token, user } = useAuth();
   const [sources, setSources] = useState<SourceRecord[]>(initialSources);
   const [stations, setStations] = useState<StationRecord[]>(initialStations);
   const [uploadHistory, setUploadHistory] =
     useState<HistoryRecord[]>(initialHistory);
+
+  // 在用户登入时从后端加载上传历史记录
+  useEffect(() => {
+    if (!token || !user) return;
+
+    let cancelled = false;
+
+    uploadService
+      .getHistory(token, { limit: "50" })
+      .then((res) => {
+        if (cancelled) return;
+
+        // 辅助函数来修复文件名和格式化
+        const formatHistoryTime = (timestamp: string): string => {
+          try {
+            const date = new Date(timestamp);
+            return date.toLocaleString("zh-TW", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          } catch {
+            return timestamp;
+          }
+        };
+
+        const formatSize = (bytes: number): string => {
+          if (bytes < 1024 * 1024) {
+            return `${(bytes / 1024).toFixed(1)} KB`;
+          }
+          return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+        };
+
+        const getHistoryDataTypeLabel = (
+          category: string,
+          dataType: string,
+        ): string => {
+          const map: Record<string, Record<string, string>> = {
+            lidar: {
+              point_cloud: "點雲資料",
+              wind_field: "風場資料",
+              boundary_layer: "大氣邊界層",
+            },
+            uav: {
+              imagery: "UAV 影像",
+              sensor: "UAV 感測器",
+              flight_path: "飛行路徑",
+            },
+          };
+          return map[category]?.[dataType] || `${category} - ${dataType}`;
+        };
+
+        setUploadHistory(
+          res.records.map((record) => ({
+            id: record.uploadId,
+            name: record.fileName,
+            type: getHistoryDataTypeLabel(record.dataCategory, record.dataType),
+            size: formatSize(record.fileSize),
+            status:
+              record.uploadStatus === "completed"
+                ? "completed"
+                : record.uploadStatus === "failed"
+                  ? "failed"
+                  : "processing",
+            time: formatHistoryTime(record.createdAt),
+            user: user.username ?? "admin",
+          })),
+        );
+      })
+      .catch(() => {
+        // 如果后端不可用，保持使用 mock 数据
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user]);
 
   return (
     <AppDataContext.Provider
@@ -234,6 +316,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       {children}
     </AppDataContext.Provider>
   );
+}
+
+export function AppDataProvider({ children }: { children: ReactNode }) {
+  return <AppDataProviderContent>{children}</AppDataProviderContent>;
 }
 
 export function useAppData() {
