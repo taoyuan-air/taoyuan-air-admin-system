@@ -136,10 +136,10 @@ http://localhost:5173
 
 可用帳號：
 
-| 帳號    | 密碼       | 角色       |
-| ------- | ---------- | ---------- |
-| admin   | REMOVED_REVOKED_SECRET   | 超級管理員 |
-| manager | REMOVED_REVOKED_SECRET | 資料管理員 |
+| 帳號    | 角色       |
+| ------- | ---------- |
+| admin   | 超級管理員 |
+| manager | 資料管理員 |
 
 ### 2. API 測試（可選）
 
