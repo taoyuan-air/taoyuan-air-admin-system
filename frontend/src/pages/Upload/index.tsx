@@ -5,6 +5,8 @@ import {
   type DragEvent,
   type ChangeEvent,
 } from "react";
+import Select from "react-select";
+import type { StylesConfig } from "react-select";
 import {
   CloudUpload,
   FileText,
@@ -186,6 +188,79 @@ interface UploadResult {
   status: "completed" | "failed";
 }
 
+type PageSizeOption = 10 | 30 | 50 | 100 | 200 | "All";
+
+const PAGE_SIZE_OPTIONS: PageSizeOption[] = [10, 30, 50, 100, 200, "All"];
+
+interface PageSizeSelectOption {
+  value: PageSizeOption;
+  label: string;
+}
+
+const historyPageSizeOptions: PageSizeSelectOption[] = PAGE_SIZE_OPTIONS.map(
+  (option) => ({
+    value: option,
+    label: option === "All" ? "All" : `${option} 筆`,
+  }),
+);
+
+const historySelectStyles: StylesConfig<PageSizeSelectOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    borderRadius: 8,
+    border: `1px solid ${state.isFocused ? "#6abe74" : "rgba(0,0,0,0.12)"}`,
+    boxShadow: state.isFocused ? "0 0 0 2px rgba(106,190,116,0.2)" : "none",
+    backgroundColor: "#fff",
+    fontSize: 13,
+    minHeight: 38,
+    "&:hover": { borderColor: "#6abe74" },
+  }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isSelected
+      ? "rgba(106,190,116,0.12)"
+      : state.isFocused
+        ? "rgba(106,190,116,0.06)"
+        : "#fff",
+    color: state.isSelected ? "#2d6a4f" : "#374151",
+    fontWeight: state.isSelected ? 600 : 400,
+    fontSize: 13,
+    cursor: "pointer",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: "#374151",
+    fontWeight: 600,
+  }),
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    color: "#6abe74",
+    padding: "0 8px",
+  }),
+  menu: (base) => ({
+    ...base,
+    borderRadius: 10,
+    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+    border: "1px solid rgba(106,190,116,0.2)",
+  }),
+  menuList: (base) => ({ ...base, padding: 4 }),
+};
+
+const historySearchInputStyle = {
+  width: 280,
+  maxWidth: "100%",
+  padding: "9px 12px",
+  borderRadius: 8,
+  border: "1px solid rgba(0,0,0,0.12)",
+  fontSize: 13,
+  color: "#374151",
+  backgroundColor: "#fff",
+  outline: "none",
+  boxSizing: "border-box" as const,
+  minHeight: 38,
+};
+
 export default function Upload() {
   const { uploadHistory: history, setUploadHistory: setHistory } = useAppData();
   const { token, user } = useAuth();
@@ -203,6 +278,9 @@ export default function Upload() {
   );
   const [activeUploadIds, setActiveUploadIds] = useState<number[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [historySearchKeyword, setHistorySearchKeyword] = useState("");
+  const [historyPageSize, setHistoryPageSize] = useState<PageSizeOption>(10);
+  const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
   const errTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uploadIdMapRef = useRef<Map<number, { id: string; file: File }>>(
     new Map(),
@@ -572,6 +650,53 @@ export default function Upload() {
   const successCount = results.filter((r) => r.status === "completed").length;
   const failCount = results.filter((r) => r.status === "failed").length;
   const allSuccess = failCount === 0 && results.length > 0;
+
+  const normalizedHistoryKeyword = historySearchKeyword.trim().toLowerCase();
+  const filteredHistory = history.filter((record) => {
+    if (!normalizedHistoryKeyword) return true;
+
+    return [record.name, record.type, record.user].some((field) =>
+      field.toLowerCase().includes(normalizedHistoryKeyword),
+    );
+  });
+
+  const historyTotalPages =
+    historyPageSize === "All"
+      ? 1
+      : Math.max(1, Math.ceil(filteredHistory.length / historyPageSize));
+
+  useEffect(() => {
+    setHistoryCurrentPage(1);
+  }, [historySearchKeyword, historyPageSize]);
+
+  useEffect(() => {
+    setHistoryCurrentPage((prev) => Math.min(prev, historyTotalPages));
+  }, [historyTotalPages]);
+
+  const paginatedHistory =
+    historyPageSize === "All"
+      ? filteredHistory
+      : filteredHistory.slice(
+          (historyCurrentPage - 1) * historyPageSize,
+          historyCurrentPage * historyPageSize,
+        );
+
+  const historyStartIndex =
+    filteredHistory.length === 0
+      ? 0
+      : historyPageSize === "All"
+        ? 1
+        : (historyCurrentPage - 1) * historyPageSize + 1;
+
+  const historyEndIndex =
+    filteredHistory.length === 0
+      ? 0
+      : historyPageSize === "All"
+        ? filteredHistory.length
+        : Math.min(
+            historyCurrentPage * historyPageSize,
+            filteredHistory.length,
+          );
 
   // Step labels for stepper
   const steps: [string, string][] = [
@@ -1710,16 +1835,60 @@ export default function Upload() {
 
       {/* ── 歷史記錄 ── */}
       <Card>
-        <h3
+        <div
           style={{
-            fontSize: 15,
-            fontWeight: 600,
-            color: "#374151",
-            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 24,
+            flexWrap: "wrap",
           }}
         >
-          上傳歷史記錄
-        </h3>
+          <h3
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#374151",
+              margin: 0,
+            }}
+          >
+            上傳歷史記錄
+          </h3>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <input
+              type="text"
+              value={historySearchKeyword}
+              onChange={(e) => setHistorySearchKeyword(e.target.value)}
+              placeholder="搜尋檔案名稱、資料類型、上傳者"
+              style={historySearchInputStyle}
+            />
+            <div
+              style={{
+                width: 128,
+                minWidth: 128,
+              }}
+            >
+              <Select<PageSizeSelectOption, false>
+                options={historyPageSizeOptions}
+                value={historyPageSizeOptions.find(
+                  (option) => option.value === historyPageSize,
+                )}
+                onChange={(option) => setHistoryPageSize(option?.value ?? 10)}
+                styles={historySelectStyles}
+                isSearchable={false}
+              />
+            </div>
+          </div>
+        </div>
         <div className="table-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -1748,40 +1917,162 @@ export default function Upload() {
               </tr>
             </thead>
             <tbody>
-              {history.map((r) => (
-                <tr
-                  key={r.id}
-                  style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
-                >
+              {paginatedHistory.length === 0 ? (
+                <tr>
                   <td
+                    colSpan={6}
                     style={{
-                      padding: "12px",
+                      padding: "20px 12px",
+                      textAlign: "center",
                       fontSize: 13,
-                      color: "#374151",
-                      fontWeight: 500,
+                      color: "#9ca3af",
                     }}
                   >
-                    {r.name}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: 13, color: "#666" }}>
-                    {r.type}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: 13, color: "#666" }}>
-                    {r.size}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: 13, color: "#666" }}>
-                    {r.user}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: 13, color: "#666" }}>
-                    {r.time}
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    <StatusBadge status={r.status} />
+                    沒有符合條件的歷史記錄
                   </td>
                 </tr>
-              ))}
+              ) : (
+                paginatedHistory.map((r) => (
+                  <tr
+                    key={r.id}
+                    style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
+                  >
+                    <td
+                      style={{
+                        padding: "12px",
+                        fontSize: 13,
+                        color: "#374151",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {r.name}
+                    </td>
+                    <td
+                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                    >
+                      {r.type}
+                    </td>
+                    <td
+                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                    >
+                      {r.size}
+                    </td>
+                    <td
+                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                    >
+                      {r.user}
+                    </td>
+                    <td
+                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                    >
+                      {r.time}
+                    </td>
+                    <td style={{ padding: "12px" }}>
+                      <StatusBadge status={r.status} />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginTop: 20,
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ fontSize: 12, color: "#6b7280" }}>
+            顯示 {historyStartIndex}-{historyEndIndex} / 共{" "}
+            {filteredHistory.length} 筆
+          </span>
+
+          {historyPageSize !== "All" && historyTotalPages > 1 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                onClick={() =>
+                  setHistoryCurrentPage((prev) => Math.max(1, prev - 1))
+                }
+                disabled={historyCurrentPage === 1}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  backgroundColor:
+                    historyCurrentPage === 1 ? "#f3f4f6" : "#fff",
+                  color: historyCurrentPage === 1 ? "#9ca3af" : "#374151",
+                  cursor: historyCurrentPage === 1 ? "not-allowed" : "pointer",
+                  fontSize: 12,
+                }}
+              >
+                上一頁
+              </button>
+
+              {Array.from({ length: historyTotalPages }, (_, index) => {
+                const page = index + 1;
+                const isActive = page === historyCurrentPage;
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setHistoryCurrentPage(page)}
+                    style={{
+                      minWidth: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      border: `1px solid ${isActive ? "#6abe74" : "#d1d5db"}`,
+                      backgroundColor: isActive ? "#6abe74" : "#fff",
+                      color: isActive ? "#fff" : "#374151",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() =>
+                  setHistoryCurrentPage((prev) =>
+                    Math.min(historyTotalPages, prev + 1),
+                  )
+                }
+                disabled={historyCurrentPage === historyTotalPages}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  backgroundColor:
+                    historyCurrentPage === historyTotalPages
+                      ? "#f3f4f6"
+                      : "#fff",
+                  color:
+                    historyCurrentPage === historyTotalPages
+                      ? "#9ca3af"
+                      : "#374151",
+                  cursor:
+                    historyCurrentPage === historyTotalPages
+                      ? "not-allowed"
+                      : "pointer",
+                  fontSize: 12,
+                }}
+              >
+                下一頁
+              </button>
+            </div>
+          )}
         </div>
       </Card>
     </div>
