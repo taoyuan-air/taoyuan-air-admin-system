@@ -106,6 +106,23 @@ export const uploadService = {
     }
   },
 
+  async deleteHistoryRecord(uploadId: number, token: string): Promise<void> {
+    let res: Response;
+    try {
+      res = await fetch(apiUrl(`/api/uploads/history/${uploadId}`), {
+        method: "DELETE",
+        headers: authHeaders(token),
+      });
+    } catch (err) {
+      throw asNetworkError(err);
+    }
+
+    if (!res.ok) {
+      const body = await parseJsonSafe<{ message?: string }>(res);
+      throw new Error(body?.message ?? "刪除歷史記錄失敗");
+    }
+  },
+
   async getHistory(
     token: string,
     params?: Record<string, string>,

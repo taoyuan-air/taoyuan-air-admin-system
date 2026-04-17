@@ -297,4 +297,56 @@ router.get(
   },
 );
 
+// DELETE /api/uploads/history/:uploadId
+router.delete(
+  "/history/:uploadId",
+  authenticateJWT,
+  async (req: Request, res: Response): Promise<void> => {
+    const user = req.user!;
+    const uploadId = parseInt(req.params.uploadId, 10);
+    if (Number.isNaN(uploadId)) {
+      res.status(400).json({ message: "無效的 uploadId" });
+      return;
+    }
+
+    const record = await FileUploadRepository.findById(uploadId);
+    if (!record) {
+      res.status(404).json({ error: ErrorCode.UPLOAD_NOT_FOUND });
+      return;
+    }
+
+    if (record.uploadStatus === "uploading") {
+      res.status(409).json({ message: "上傳進行中，請先取消上傳" });
+      return;
+    }
+
+    const isAdmin =
+      user.roleCode === "super_admin" || user.roleCode === "system_admin";
+    if (!isAdmin && record.userId !== user.userId) {
+      res
+        .status(403)
+        .json({ error: ErrorCode.FORBIDDEN, message: "無刪除此資料的權限" });
+      return;
+    }
+
+    if (record.filePath) {
+      await StorageService.deleteFile(record.filePath);
+    }
+
+    const deleted = await FileUploadRepository.deleteById(uploadId);
+    if (!deleted) {
+      res.status(404).json({ error: ErrorCode.UPLOAD_NOT_FOUND });
+      return;
+    }
+
+    ProgressService.delete(uploadId);
+    logUploadAction(user.userId, "UPLOAD_DELETE", uploadId, req.ip ?? "", {
+      fileName: record.fileName,
+      ownerUserId: record.userId,
+    });
+
+    res.json({ message: "歷史資料已刪除" });
+  },
+);
+
 export default router;
