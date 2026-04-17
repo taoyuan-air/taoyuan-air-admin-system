@@ -169,39 +169,6 @@ export default function LoginPage() {
             {loading ? "登入中..." : "登入"}
           </button>
         </form>
-
-        <div
-          style={{
-            marginTop: 20,
-            padding: "12px",
-            backgroundColor: "rgba(106,190,116,0.06)",
-            borderRadius: 8,
-            fontSize: 12,
-            color: "#6b7280",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <span>測試帳號：admin / REMOVED_REVOKED_SECRET</span>
-          <button
-            type="button"
-            onClick={() => login("admin", "REMOVED_REVOKED_SECRET")}
-            style={{
-              padding: "3px 10px",
-              backgroundColor: "transparent",
-              color: "#9ca3af",
-              border: "none",
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: 600,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
-          >
-            快速登入
-          </button>
-        </div>
       </div>
     </div>
   );
