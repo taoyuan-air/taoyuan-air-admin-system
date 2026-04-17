@@ -104,6 +104,14 @@ export const FileUploadRepository = {
     return rows.map(toRecord);
   },
 
+  async deleteById(uploadId: number): Promise<boolean> {
+    const result = await pool.query(
+      "DELETE FROM file_uploads WHERE upload_id = $1",
+      [uploadId],
+    );
+    return result.rowCount > 0;
+  },
+
   async findAll(
     filter: HistoryFilter,
   ): Promise<{ total: number; records: FileUploadRecord[] }> {

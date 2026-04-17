@@ -281,6 +281,16 @@ export default function Upload() {
   const [historySearchKeyword, setHistorySearchKeyword] = useState("");
   const [historyPageSize, setHistoryPageSize] = useState<PageSizeOption>(10);
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
+  const [historyDeleteTarget, setHistoryDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [historyDeletingId, setHistoryDeletingId] = useState<number | null>(
+    null,
+  );
+  const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(
+    null,
+  );
   const errTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uploadIdMapRef = useRef<Map<number, { id: string; file: File }>>(
     new Map(),
@@ -645,6 +655,45 @@ export default function Upload() {
     setIsUploading(false);
     setStep(3);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const closeDeleteDialog = () => {
+    if (historyDeletingId !== null) return;
+    setHistoryDeleteTarget(null);
+    setHistoryDeleteError(null);
+  };
+
+  const handleDeleteHistoryRecord = async () => {
+    if (!historyDeleteTarget || historyDeletingId !== null) return;
+
+    if (isDemoMode) {
+      setHistory((prev) =>
+        prev.filter((item) => item.id !== historyDeleteTarget.id),
+      );
+      setHistoryDeleteTarget(null);
+      setHistoryDeleteError(null);
+      return;
+    }
+
+    if (!token) {
+      setHistoryDeleteError("尚未登入，請重新登入後再刪除。");
+      return;
+    }
+
+    setHistoryDeleteError(null);
+    setHistoryDeletingId(historyDeleteTarget.id);
+    try {
+      await uploadService.deleteHistoryRecord(historyDeleteTarget.id, token);
+      setHistory((prev) =>
+        prev.filter((item) => item.id !== historyDeleteTarget.id),
+      );
+      setHistoryDeleteTarget(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "刪除歷史記錄失敗";
+      setHistoryDeleteError(message);
+    } finally {
+      setHistoryDeletingId(null);
+    }
   };
 
   const successCount = results.filter((r) => r.status === "completed").length;
@@ -1920,7 +1969,7 @@ export default function Upload() {
               {paginatedHistory.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     style={{
                       padding: "20px 12px",
                       textAlign: "center",
@@ -1969,6 +2018,43 @@ export default function Upload() {
                     </td>
                     <td style={{ padding: "12px" }}>
                       <StatusBadge status={r.status} />
+                    </td>
+                    <td style={{ padding: "12px" }}>
+                      <button
+                        onClick={() => {
+                          setHistoryDeleteError(null);
+                          setHistoryDeleteTarget({ id: r.id, name: r.name });
+                        }}
+                        disabled={
+                          r.status === "processing" ||
+                          historyDeletingId === r.id
+                        }
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          border: "1px solid rgba(239,68,68,0.35)",
+                          backgroundColor: "transparent",
+                          color:
+                            r.status === "processing" ? "#9ca3af" : "#ef4444",
+                          fontSize: 12,
+                          cursor:
+                            r.status === "processing" ||
+                            historyDeletingId === r.id
+                              ? "not-allowed"
+                              : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                        title={
+                          r.status === "processing"
+                            ? "上傳進行中，暫時無法刪除"
+                            : "刪除這筆資料"
+                        }
+                      >
+                        <Trash2 size={13} />
+                        {historyDeletingId === r.id ? "刪除中" : "刪除"}
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -2075,6 +2161,131 @@ export default function Upload() {
           )}
         </div>
       </Card>
+
+      {historyDeleteTarget && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 220,
+            backgroundColor: "rgba(0,0,0,0.28)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={closeDeleteDialog}
+        >
+          <div
+            style={{
+              width: "min(460px, calc(100vw - 32px))",
+              borderRadius: 16,
+              backgroundColor: "#F4F2E9",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+              padding: 22,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#374151",
+                marginBottom: 8,
+              }}
+            >
+              確認刪除上傳資料
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "#6b7280",
+                lineHeight: 1.6,
+              }}
+            >
+              你即將刪除這筆上傳歷史記錄，刪除後將同步移除資料庫紀錄與檔案，且無法復原。
+            </div>
+            <div
+              style={{
+                marginTop: 10,
+                padding: "8px 10px",
+                borderRadius: 8,
+                backgroundColor: "rgba(255,255,255,0.7)",
+                border: "1px solid rgba(0,0,0,0.08)",
+                fontSize: 12,
+                color: "#374151",
+                wordBreak: "break-all",
+              }}
+            >
+              {historyDeleteTarget.name}
+            </div>
+
+            {historyDeleteError && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  backgroundColor: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.25)",
+                  color: "#dc2626",
+                  fontSize: 12,
+                }}
+              >
+                {historyDeleteError}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 18,
+              }}
+            >
+              <button
+                onClick={closeDeleteDialog}
+                disabled={historyDeletingId !== null}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  backgroundColor: "transparent",
+                  color: "#6b7280",
+                  fontSize: 13,
+                  cursor:
+                    historyDeletingId !== null ? "not-allowed" : "pointer",
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleDeleteHistoryRecord}
+                disabled={historyDeletingId !== null}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  backgroundColor:
+                    historyDeletingId !== null ? "#fca5a5" : "#ef4444",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor:
+                    historyDeletingId !== null ? "not-allowed" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Trash2 size={14} />
+                {historyDeletingId !== null ? "刪除中..." : "確認刪除"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
