@@ -21,7 +21,9 @@ import {
   Trash2,
   RotateCcw,
   FolderCheck,
+  FileSpreadsheet,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import Card from "../../components/Card";
 import Header from "../../components/Layout/Header";
 import StatusBadge from "../../components/StatusBadge";
@@ -281,16 +283,13 @@ export default function Upload() {
   const [historySearchKeyword, setHistorySearchKeyword] = useState("");
   const [historyPageSize, setHistoryPageSize] = useState<PageSizeOption>(10);
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
-  const [historyDeleteTarget, setHistoryDeleteTarget] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
-  const [historyDeletingId, setHistoryDeletingId] = useState<number | null>(
-    null,
-  );
   const [historyDeleteError, setHistoryDeleteError] = useState<string | null>(
     null,
   );
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const errTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uploadIdMapRef = useRef<Map<number, { id: string; file: File }>>(
     new Map(),
@@ -657,21 +656,16 @@ export default function Upload() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const closeDeleteDialog = () => {
-    if (historyDeletingId !== null) return;
-    setHistoryDeleteTarget(null);
-    setHistoryDeleteError(null);
-  };
-
-  const handleDeleteHistoryRecord = async () => {
-    if (!historyDeleteTarget || historyDeletingId !== null) return;
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0 || isBatchDeleting) return;
+    const ids = Array.from(selectedIds);
 
     if (isDemoMode) {
       setHistory((prev) =>
-        prev.filter((item) => item.id !== historyDeleteTarget.id),
+        prev.filter((item) => !ids.includes(item.id as number)),
       );
-      setHistoryDeleteTarget(null);
-      setHistoryDeleteError(null);
+      setSelectedIds(new Set());
+      setShowBatchDeleteDialog(false);
       return;
     }
 
@@ -680,25 +674,105 @@ export default function Upload() {
       return;
     }
 
+    setIsBatchDeleting(true);
     setHistoryDeleteError(null);
-    setHistoryDeletingId(historyDeleteTarget.id);
     try {
-      await uploadService.deleteHistoryRecord(historyDeleteTarget.id, token);
-      setHistory((prev) =>
-        prev.filter((item) => item.id !== historyDeleteTarget.id),
+      await Promise.all(
+        ids.map((id) => uploadService.deleteHistoryRecord(id, token)),
       );
-      setHistoryDeleteTarget(null);
+      setHistory((prev) =>
+        prev.filter((item) => !ids.includes(item.id as number)),
+      );
+      setSelectedIds(new Set());
+      setShowBatchDeleteDialog(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "刪除歷史記錄失敗";
+      const message = err instanceof Error ? err.message : "刪除失敗";
       setHistoryDeleteError(message);
     } finally {
-      setHistoryDeletingId(null);
+      setIsBatchDeleting(false);
     }
+  };
+
+  const exportSelectedToExcel = () => {
+    const STATUS_LABEL: Record<string, string> = {
+      completed: "完成",
+      failed: "失敗",
+      processing: "處理中",
+    };
+
+    const selectedRows = paginatedHistory.filter((r) =>
+      selectedIds.has(r.id as number),
+    );
+
+    const data = selectedRows.map((r) => ({
+      檔案名稱: r.name,
+      資料類型: r.type,
+      檔案大小: r.size,
+      上傳者: r.user,
+      上傳時間: r.time,
+      狀態: STATUS_LABEL[r.status] ?? r.status,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // 欄寬
+    ws["!cols"] = [40, 16, 12, 14, 18, 10].map((wch) => ({ wch }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "上傳歷史");
+
+    // 檔名用台北時間
+    const now = new Date();
+    const ts = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Taipei",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+      .format(now)
+      .replace(/[-: ]/g, "")
+      .slice(0, 15);
+
+    XLSX.writeFile(wb, `upload_history_${ts}.xlsx`);
+  };
+
+  const toggleSelectAll = () => {
+    const selectableIds = paginatedHistory
+      .filter((r) => r.status !== "processing")
+      .map((r) => r.id as number);
+    const allSelected = selectableIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        selectableIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => new Set([...prev, ...selectableIds]));
+    }
+  };
+
+  const toggleSelectOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const successCount = results.filter((r) => r.status === "completed").length;
   const failCount = results.filter((r) => r.status === "failed").length;
   const allSuccess = failCount === 0 && results.length > 0;
+
+  // Reset selection when page/filter changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [historySearchKeyword, historyPageSize, historyCurrentPage]);
 
   const normalizedHistoryKeyword = historySearchKeyword.trim().toLowerCase();
   const filteredHistory = history.filter((record) => {
@@ -1890,7 +1964,7 @@ export default function Upload() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
-            marginBottom: 24,
+            marginBottom: selectedIds.size > 0 ? 12 : 24,
             flexWrap: "wrap",
           }}
         >
@@ -1938,10 +2012,136 @@ export default function Upload() {
             </div>
           </div>
         </div>
+
+        {/* 批次操作列 */}
+        {selectedIds.size > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 16,
+              marginTop: 18,
+              padding: "8px 8px 8px 12px",
+              borderRadius: 8,
+              backgroundColor: "rgba(239,68,68,0.05)",
+              border: "1px solid rgba(239,68,68,0.2)",
+            }}
+          >
+            <span style={{ fontSize: 13, color: "#374151", flex: 1 }}>
+              已選取 <strong>{selectedIds.size}</strong> 筆
+            </span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginRight: 8,
+              }}
+            >
+              <button
+                onClick={() => setShowExportDialog(true)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "7px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  backgroundColor: "#6abe74",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <FileSpreadsheet size={13} /> 匯出 Excel
+              </button>
+              <button
+                onClick={() => {
+                  setHistoryDeleteError(null);
+                  setShowBatchDeleteDialog(true);
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "7px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  backgroundColor: "#ef4444",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <Trash2 size={13} /> 刪除選取
+              </button>
+            </div>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                border: "none",
+                backgroundColor: "transparent",
+                color: "#9ca3af",
+                fontSize: 18,
+                lineHeight: 1,
+                cursor: "pointer",
+                flexShrink: 0,
+                transition: "background-color 0.15s, color 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.06)";
+                e.currentTarget.style.color = "#374151";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = "#9ca3af";
+              }}
+              title="取消選取"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <div className="table-wrap">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                <th style={{ padding: "8px 12px", width: 40 }}>
+                  {(() => {
+                    const selectableIds = paginatedHistory
+                      .filter((r) => r.status !== "processing")
+                      .map((r) => r.id as number);
+                    const checkedCount = selectableIds.filter((id) =>
+                      selectedIds.has(id),
+                    ).length;
+                    const isAll =
+                      selectableIds.length > 0 &&
+                      checkedCount === selectableIds.length;
+                    const isIndeterminate = checkedCount > 0 && !isAll;
+                    return (
+                      <input
+                        type="checkbox"
+                        checked={isAll}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isIndeterminate;
+                        }}
+                        onChange={toggleSelectAll}
+                        disabled={selectableIds.length === 0}
+                        className="custom-checkbox"
+                        title="全選"
+                      />
+                    );
+                  })()}
+                </th>
                 {[
                   "檔案名稱",
                   "資料類型",
@@ -1981,83 +2181,68 @@ export default function Upload() {
                   </td>
                 </tr>
               ) : (
-                paginatedHistory.map((r) => (
-                  <tr
-                    key={r.id}
-                    style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
-                  >
-                    <td
+                paginatedHistory.map((r) => {
+                  const isSelected = selectedIds.has(r.id as number);
+                  const isProcessing = r.status === "processing";
+                  return (
+                    <tr
+                      key={r.id}
                       style={{
-                        padding: "12px",
-                        fontSize: 13,
-                        color: "#374151",
-                        fontWeight: 500,
+                        borderBottom: "1px solid rgba(0,0,0,0.04)",
+                        backgroundColor: isSelected
+                          ? "rgba(239,68,68,0.04)"
+                          : undefined,
+                        transition: "background-color 0.1s",
                       }}
                     >
-                      {r.name}
-                    </td>
-                    <td
-                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
-                    >
-                      {r.type}
-                    </td>
-                    <td
-                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
-                    >
-                      {r.size}
-                    </td>
-                    <td
-                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
-                    >
-                      {r.user}
-                    </td>
-                    <td
-                      style={{ padding: "12px", fontSize: 13, color: "#666" }}
-                    >
-                      {r.time}
-                    </td>
-                    <td style={{ padding: "12px" }}>
-                      <StatusBadge status={r.status} />
-                    </td>
-                    <td style={{ padding: "12px" }}>
-                      <button
-                        onClick={() => {
-                          setHistoryDeleteError(null);
-                          setHistoryDeleteTarget({ id: r.id, name: r.name });
-                        }}
-                        disabled={
-                          r.status === "processing" ||
-                          historyDeletingId === r.id
-                        }
+                      <td style={{ padding: "12px" }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() =>
+                            !isProcessing && toggleSelectOne(r.id as number)
+                          }
+                          disabled={isProcessing}
+                          className="custom-checkbox"
+                          title={isProcessing ? "上傳進行中，暫時無法選取" : ""}
+                        />
+                      </td>
+                      <td
                         style={{
-                          padding: "4px 10px",
-                          borderRadius: 6,
-                          border: "1px solid rgba(239,68,68,0.35)",
-                          backgroundColor: "transparent",
-                          color:
-                            r.status === "processing" ? "#9ca3af" : "#ef4444",
-                          fontSize: 12,
-                          cursor:
-                            r.status === "processing" ||
-                            historyDeletingId === r.id
-                              ? "not-allowed"
-                              : "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
+                          padding: "12px",
+                          fontSize: 13,
+                          color: "#374151",
+                          fontWeight: 500,
                         }}
-                        title={
-                          r.status === "processing"
-                            ? "上傳進行中，暫時無法刪除"
-                            : "刪除這筆資料"
-                        }
                       >
-                        <Trash2 size={13} />
-                        {historyDeletingId === r.id ? "刪除中" : "刪除"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        {r.name}
+                      </td>
+                      <td
+                        style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                      >
+                        {r.type}
+                      </td>
+                      <td
+                        style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                      >
+                        {r.size}
+                      </td>
+                      <td
+                        style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                      >
+                        {r.user}
+                      </td>
+                      <td
+                        style={{ padding: "12px", fontSize: 13, color: "#666" }}
+                      >
+                        {r.time}
+                      </td>
+                      <td style={{ padding: "12px" }}>
+                        <StatusBadge status={r.status} />
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -2162,7 +2347,8 @@ export default function Upload() {
         </div>
       </Card>
 
-      {historyDeleteTarget && (
+      {/* 匯出 Excel 確認 Dialog */}
+      {showExportDialog && (
         <div
           style={{
             position: "fixed",
@@ -2174,7 +2360,7 @@ export default function Upload() {
             justifyContent: "center",
             padding: 16,
           }}
-          onClick={closeDeleteDialog}
+          onClick={() => setShowExportDialog(false)}
         >
           <div
             style={{
@@ -2194,32 +2380,104 @@ export default function Upload() {
                 marginBottom: 8,
               }}
             >
-              確認刪除上傳資料
+              確認匯出 Excel
+            </div>
+            <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
+              即將將已選取的 <strong>{selectedIds.size}</strong> 筆記錄匯出為
+              Excel 檔案。
             </div>
             <div
               style={{
-                fontSize: 13,
-                color: "#6b7280",
-                lineHeight: 1.6,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 18,
               }}
             >
-              你即將刪除這筆上傳歷史記錄，刪除後將同步移除資料庫紀錄與檔案，且無法復原。
+              <button
+                onClick={() => setShowExportDialog(false)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  backgroundColor: "transparent",
+                  color: "#6b7280",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  exportSelectedToExcel();
+                  setShowExportDialog(false);
+                }}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  backgroundColor: "#6abe74",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <FileSpreadsheet size={14} /> 確認匯出
+              </button>
             </div>
-            <div
-              style={{
-                marginTop: 10,
-                padding: "8px 10px",
-                borderRadius: 8,
-                backgroundColor: "rgba(255,255,255,0.7)",
-                border: "1px solid rgba(0,0,0,0.08)",
-                fontSize: 12,
-                color: "#374151",
-                wordBreak: "break-all",
-              }}
-            >
-              {historyDeleteTarget.name}
-            </div>
+          </div>
+        </div>
+      )}
 
+      {/* 批次刪除 Dialog */}
+      {showBatchDeleteDialog && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 220,
+            backgroundColor: "rgba(0,0,0,0.28)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={() => {
+            if (!isBatchDeleting) {
+              setShowBatchDeleteDialog(false);
+              setHistoryDeleteError(null);
+            }
+          }}
+        >
+          <div
+            style={{
+              width: "min(460px, calc(100vw - 32px))",
+              borderRadius: 16,
+              backgroundColor: "#F4F2E9",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
+              padding: 22,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#374151",
+                marginBottom: 8,
+              }}
+            >
+              確認批次刪除
+            </div>
+            <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}>
+              你即將刪除 <strong>{selectedIds.size}</strong>{" "}
+              筆上傳歷史記錄，刪除後將同步移除資料庫紀錄與檔案，且無法復原。
+            </div>
             {historyDeleteError && (
               <div
                 style={{
@@ -2235,7 +2493,6 @@ export default function Upload() {
                 {historyDeleteError}
               </div>
             )}
-
             <div
               style={{
                 display: "flex",
@@ -2245,8 +2502,11 @@ export default function Upload() {
               }}
             >
               <button
-                onClick={closeDeleteDialog}
-                disabled={historyDeletingId !== null}
+                onClick={() => {
+                  setShowBatchDeleteDialog(false);
+                  setHistoryDeleteError(null);
+                }}
+                disabled={isBatchDeleting}
                 style={{
                   padding: "8px 14px",
                   borderRadius: 8,
@@ -2254,38 +2514,38 @@ export default function Upload() {
                   backgroundColor: "transparent",
                   color: "#6b7280",
                   fontSize: 13,
-                  cursor:
-                    historyDeletingId !== null ? "not-allowed" : "pointer",
+                  cursor: isBatchDeleting ? "not-allowed" : "pointer",
                 }}
               >
                 取消
               </button>
               <button
-                onClick={handleDeleteHistoryRecord}
-                disabled={historyDeletingId !== null}
+                onClick={handleBatchDelete}
+                disabled={isBatchDeleting}
                 style={{
                   padding: "8px 14px",
                   borderRadius: 8,
                   border: "none",
-                  backgroundColor:
-                    historyDeletingId !== null ? "#fca5a5" : "#ef4444",
+                  backgroundColor: isBatchDeleting ? "#fca5a5" : "#ef4444",
                   color: "#fff",
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor:
-                    historyDeletingId !== null ? "not-allowed" : "pointer",
+                  cursor: isBatchDeleting ? "not-allowed" : "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
                 }}
               >
                 <Trash2 size={14} />
-                {historyDeletingId !== null ? "刪除中..." : "確認刪除"}
+                {isBatchDeleting
+                  ? "刪除中..."
+                  : `確認刪除 (${selectedIds.size})`}
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
