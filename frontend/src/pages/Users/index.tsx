@@ -140,6 +140,7 @@ export default function Users() {
     password: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<UserRow | null>(null);
 
   const authHeader = { Authorization: `Bearer ${token}` };
 
@@ -273,6 +274,18 @@ export default function Users() {
     navigator.clipboard.writeText(tempPassword.password);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingUser) return;
+    const res = await fetch(apiUrl(`/api/users/${deletingUser.userId}`), {
+      method: 'DELETE',
+      headers: authHeader,
+    });
+    if (res.ok) {
+      setUsers(prev => prev.filter(u => u.userId !== deletingUser.userId));
+    }
+    setDeletingUser(null);
   };
 
   return (
@@ -485,6 +498,20 @@ export default function Users() {
                         }}
                       >
                         {u.isActive ? "停用" : "啟用"}
+                      </button>
+                      <button
+                        onClick={() => setDeletingUser(u)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          border: "1px solid rgba(220,38,38,0.25)",
+                          backgroundColor: "transparent",
+                          color: "#dc2626",
+                          fontSize: 11,
+                          cursor: "pointer",
+                        }}
+                      >
+                        刪除
                       </button>
                     </div>
                   </td>
@@ -953,6 +980,68 @@ export default function Users() {
               >
                 關閉
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 刪除確認 Modal */}
+      {deletingUser && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          backgroundColor: 'rgba(55,65,81,0.25)',
+          backdropFilter: 'blur(2px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            backgroundColor: '#F4F2E9', borderRadius: 20, padding: 28,
+            width: 'min(400px, calc(100vw - 32px))',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            border: '1px solid rgba(220,38,38,0.15)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151', margin: 0 }}>刪除使用者</h2>
+              <button onClick={() => setDeletingUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+                <X size={18} color="#999" />
+              </button>
+            </div>
+
+            <div style={{
+              backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: 14,
+              border: '1px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              padding: '16px 20px', marginBottom: 20,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  backgroundColor: roleConfig[deletingUser.roleCode]?.bg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 700, color: roleConfig[deletingUser.roleCode]?.color, flexShrink: 0,
+                }}>{deletingUser.fullName[0]}</div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#374151' }}>{deletingUser.fullName}</div>
+                  <div style={{ fontSize: 12, color: '#999', fontFamily: 'monospace' }}>{deletingUser.username}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24 }}>
+              <Info size={13} color="#999" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: '#999', lineHeight: 1.5 }}>此操作無法復原，該帳號將從資料庫中永久刪除。</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setDeletingUser(null)} style={{
+                padding: '9px 20px', borderRadius: 10,
+                border: '1px solid rgba(0,0,0,0.12)',
+                backgroundColor: 'transparent', color: '#666',
+                fontSize: 13, cursor: 'pointer',
+              }}>取消</button>
+              <button onClick={handleDelete} style={{
+                padding: '9px 20px', borderRadius: 10, border: 'none',
+                backgroundColor: '#dc2626', color: '#fff',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>確認刪除</button>
             </div>
           </div>
         </div>

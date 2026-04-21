@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppDataProvider } from './contexts/AppDataContext';
 import Sidebar from './components/Layout/Sidebar';
@@ -11,6 +11,21 @@ import Stations from './pages/Stations';
 import Users from './pages/Users';
 import ChangePasswordPage from './pages/ChangePassword';
 import LoginPage from './pages/Login';
+import type { RoleCode } from './types';
+
+const ROUTE_ROLES: Record<string, RoleCode[]> = {
+  '/upload': ['system_admin', 'data_manager'],
+  '/users':  ['system_admin'],
+};
+
+function GuardedRoute({ path, element }: { path: string; element: React.ReactElement }) {
+  const { user } = useAuth();
+  const allowed = ROUTE_ROLES[path];
+  if (allowed && user && !allowed.includes(user.roleCode as RoleCode)) {
+    return <Navigate to="/" replace />;
+  }
+  return element;
+}
 
 function AppContent() {
   const { user } = useAuth();
@@ -56,10 +71,10 @@ function AppContent() {
         )}
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/upload" element={<Upload />} />
+          <Route path="/upload" element={<GuardedRoute path="/upload" element={<Upload />} />} />
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/stations" element={<Stations />} />
-          <Route path="/users" element={<Users />} />
+          <Route path="/users" element={<GuardedRoute path="/users" element={<Users />} />} />
         </Routes>
       </main>
     </div>

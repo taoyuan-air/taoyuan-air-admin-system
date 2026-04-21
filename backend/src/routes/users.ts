@@ -142,4 +142,21 @@ router.patch('/:id/active', async (req: Request, res: Response): Promise<void> =
   res.json({ user: toUserDto(rows[0]) });
 });
 
+// DELETE /api/users/:id
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  const { rowCount } = await pool.query(
+    'DELETE FROM admin_users WHERE user_id = $1',
+    [id],
+  );
+
+  if (!rowCount) {
+    res.status(404).json({ error: 'NOT_FOUND', message: '使用者不存在' });
+    return;
+  }
+
+  res.json({ success: true });
+});
+
 export default router;
