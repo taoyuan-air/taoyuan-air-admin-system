@@ -1,46 +1,18 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import type { User, RoleCode } from "../types";
-import { apiUrl, isDemoMode } from "../config/api";
+import type { User } from "../types";
+import { apiUrl } from "../config/api";
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  clearMustChangePassword: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const MOCK_USERS: (User & { password: string })[] = [
-  {
-    userId: 1,
-    username: "admin",
-    password: "REMOVED_REVOKED_SECRET",
-    email: "admin@taoyuan-air.gov.tw",
-    fullName: "系統管理員",
-    roleCode: "system_admin",
-    roleName: "系統管理員",
-    organization: "桃園市政府",
-    uploadQuotaGb: 100,
-    isActive: true,
-    createdAt: "2024-01-01",
-  },
-  {
-    userId: 2,
-    username: "manager",
-    password: "REMOVED_REVOKED_SECRET",
-    email: "manager@taoyuan-air.gov.tw",
-    fullName: "資料管理員",
-    roleCode: "data_manager" as RoleCode,
-    roleName: "資料管理員",
-    organization: "環保局",
-    uploadQuotaGb: 20,
-    isActive: true,
-    createdAt: "2024-01-01",
-  },
-];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
@@ -53,36 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const login = async (username: string, password: string) => {
-    // 先驗證本地 mock（保持前端 UI 不變）
-    const found = MOCK_USERS.find(
-      (u) => u.username === username && u.password === password,
-    );
-    if (!found) throw new Error("帳號或密碼錯誤");
-
-    const userWithoutPassword: User = {
-      userId: found.userId,
-      username: found.username,
-      email: found.email,
-      fullName: found.fullName,
-      roleCode: found.roleCode,
-      roleName: found.roleName,
-      organization: found.organization,
-      uploadQuotaGb: found.uploadQuotaGb,
-      isActive: found.isActive,
-      createdAt: found.createdAt,
-    };
-
-    // Demo 模式不打後端 API，讓前端在 Vercel 也能展示
-    if (isDemoMode) {
-      const demoToken = "demo-token";
-      setUser(userWithoutPassword);
-      setToken(demoToken);
-      sessionStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));
-      sessionStorage.setItem("auth_token", demoToken);
-      return;
-    }
-
-    // 向後端取得真實 JWT
     let res: Response;
     try {
       res = await fetch(apiUrl("/api/auth/login"), {
@@ -94,12 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("無法連線到後端 API，請確認 backend 已啟動。");
     }
 
-    if (!res.ok) throw new Error("帳號或密碼錯誤");
-    const { token: jwt } = (await res.json()) as { token: string };
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message ?? "登入失敗");
+    }
 
-    setUser(userWithoutPassword);
+    const { token: jwt, user: userData } = data as { token: string; user: User };
+    setUser(userData);
     setToken(jwt);
-    sessionStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));
+    sessionStorage.setItem("auth_user", JSON.stringify(userData));
     sessionStorage.setItem("auth_token", jwt);
   };
 
@@ -110,8 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem("auth_token");
   };
 
+  const clearMustChangePassword = () => {
+    if (!user) return;
+    const updated = { ...user, mustChangePassword: false };
+    setUser(updated);
+    sessionStorage.setItem("auth_user", JSON.stringify(updated));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, clearMustChangePassword }}>
       {children}
     </AuthContext.Provider>
   );

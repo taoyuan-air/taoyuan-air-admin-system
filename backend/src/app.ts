@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import uploadRouter from './routes/uploads';
 import authRouter from './routes/auth';
+import usersRouter from './routes/users';
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 app.use('/api/uploads', uploadRouter);
+app.use('/api/users', usersRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
