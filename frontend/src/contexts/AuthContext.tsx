@@ -1,8 +1,63 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import type { User } from "../types";
-import { apiUrl } from "../config/api";
+import type { User, RoleCode } from "../types";
+import { apiUrl, isDemoMode } from "../config/api";
+
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => void;
+  clearMustChangePassword: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+const MOCK_USERS: (User & { password: string })[] = [
+  {
+    userId: 1,
+    username: "admin",
+    password: "REMOVED_REVOKED_SECRET",
+    email: "admin@taoyuan-air.gov.tw",
+    fullName: "系統管理員",
+    roleCode: "system_admin" as RoleCode,
+    roleName: "系統管理員",
+    organization: "桃園市政府",
+    uploadQuotaGb: 100,
+    isActive: true,
+    mustChangePassword: false,
+    createdAt: "2024-01-01",
+  },
+  {
+    userId: 2,
+    username: "manager",
+    password: "REMOVED_REVOKED_SECRET",
+    email: "manager@taoyuan-air.gov.tw",
+    fullName: "資料管理員",
+    roleCode: "data_manager" as RoleCode,
+    roleName: "資料管理員",
+    organization: "環保局",
+    uploadQuotaGb: 20,
+    isActive: true,
+    mustChangePassword: false,
+    createdAt: "2024-01-01",
+  },
+  {
+    userId: 3,
+    username: "viewer",
+    password: "REMOVED_REVOKED_SECRET",
+    email: "viewer@taoyuan-air.gov.tw",
+    fullName: "唯讀使用者",
+    roleCode: "readonly" as RoleCode,
+    roleName: "唯讀使用者",
+    organization: "桃園市政府",
+    uploadQuotaGb: 0,
+    isActive: true,
+    mustChangePassword: false,
+    createdAt: "2024-01-01",
+  },
+];
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +80,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const login = async (username: string, password: string) => {
+    if (isDemoMode) {
+      const found = MOCK_USERS.find(
+        (u) => u.username === username && u.password === password,
+      );
+      if (!found) throw new Error("帳號或密碼錯誤");
+      const { password: _pw, ...userWithoutPassword } = found;
+      void _pw;
+      setUser(userWithoutPassword);
+      setToken("demo-token");
+      sessionStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));
+      sessionStorage.setItem("auth_token", "demo-token");
+      return;
+    }
+
     let res: Response;
     try {
       res = await fetch(apiUrl("/api/auth/login"), {
