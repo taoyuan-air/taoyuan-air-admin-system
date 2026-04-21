@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Upload,
@@ -9,13 +9,14 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import type { RoleCode } from "../../types";
 
-const navItems = [
-  { path: "/", label: "儀表板", Icon: LayoutDashboard },
-  { path: "/upload", label: "資料上傳", Icon: Upload },
-  { path: "/data-sources", label: "資料來源", Icon: Database },
-  { path: "/stations", label: "測站管理", Icon: Radio },
-  { path: "/users", label: "使用者管理", Icon: Users },
+const navItems: { path: string; label: string; Icon: React.ElementType; allowedRoles: RoleCode[] }[] = [
+  { path: "/",            label: "儀表板",   Icon: LayoutDashboard, allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/upload",      label: "資料上傳", Icon: Upload,          allowedRoles: ['system_admin', 'data_manager'] },
+  { path: "/data-sources",label: "資料來源", Icon: Database,        allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/stations",   label: "測站管理", Icon: Radio,           allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/users",      label: "使用者管理",Icon: Users,           allowedRoles: ['system_admin'] },
 ];
 
 function UserBlock() {
@@ -101,6 +102,10 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
+  const { user } = useAuth();
+  const visibleItems = navItems.filter(item =>
+    user ? item.allowedRoles.includes(user.roleCode as RoleCode) : false
+  );
   return (
     <>
       {/* 手機版遮罩 */}
@@ -188,7 +193,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
         {/* Nav */}
         <nav style={{ flex: 1, padding: "0 12px" }}>
-          {navItems.map(({ path, label, Icon }) => (
+          {visibleItems.map(({ path, label, Icon }) => (
             <NavLink
               key={path}
               to={path}
