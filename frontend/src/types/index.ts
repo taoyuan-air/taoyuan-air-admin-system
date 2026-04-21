@@ -1,4 +1,4 @@
-export type RoleCode = 'super_admin' | 'system_admin' | 'data_manager' | 'readonly';
+export type RoleCode = 'system_admin' | 'data_manager' | 'readonly';
 
 export interface User {
   userId: number;

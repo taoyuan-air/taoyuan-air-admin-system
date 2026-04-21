@@ -6,8 +6,7 @@ import Header from '../../components/Layout/Header';
 import StatusBadge from '../../components/StatusBadge';
 
 const roleConfig: Record<string, { label: string; color: string; bg: string }> = {
-  super_admin:  { label: '超級管理員', color: '#2d6a4f', bg: 'rgba(45,106,79,0.12)'   },
-  system_admin: { label: '系統管理員', color: '#52796f', bg: 'rgba(82,121,111,0.12)'  },
+  system_admin: { label: '系統管理員', color: '#2d6a4f', bg: 'rgba(45,106,79,0.12)'   },
   data_manager: { label: '資料管理員', color: '#6abe74', bg: 'rgba(106,190,116,0.12)' },
   readonly:     { label: '唯讀使用者', color: '#a0a98f', bg: 'rgba(160,169,143,0.15)' },
 };
@@ -25,10 +24,9 @@ interface User {
 }
 
 const initialUsers: User[] = [
-  { id: 1, username: 'admin',    fullName: '系統管理員', email: 'admin@taoyuan.gov.tw', role: 'super_admin',  org: '桃園市政府', active: true,  lastLogin: '2026-04-01 08:30', quota: 100 },
-  { id: 2, username: 'sys_mgr',  fullName: '王大明',    email: 'wang@taoyuan.gov.tw',  role: 'system_admin', org: '桃園市政府', active: true,  lastLogin: '2026-04-01 07:15', quota: 50 },
-  { id: 3, username: 'data_mgr', fullName: '李小華',    email: 'lee@taoyuan.gov.tw',   role: 'data_manager', org: '桃園市政府', active: true,  lastLogin: '2026-03-31 16:00', quota: 30 },
-  { id: 4, username: 'readonly', fullName: '張唯讀',    email: 'zhang@taoyuan.gov.tw', role: 'readonly',     org: '桃園市政府', active: false, lastLogin: '2026-03-20 11:00', quota: 5 },
+  { id: 1, username: 'admin',    fullName: '系統管理員', email: 'admin@taoyuan.gov.tw',   role: 'system_admin', org: '桃園市政府', active: true,  lastLogin: '2026-04-01 08:30', quota: 100 },
+  { id: 2, username: 'manager',  fullName: '王大明',    email: 'wang@taoyuan.gov.tw',    role: 'data_manager', org: '桃園市政府', active: true,  lastLogin: '2026-04-01 07:15', quota: 30 },
+  { id: 3, username: 'readonly', fullName: '張唯讀',    email: 'zhang@taoyuan.gov.tw',   role: 'readonly',     org: '桃園市政府', active: true,  lastLogin: '2026-03-20 11:00', quota: 0 },
 ];
 
 const roleOptions = Object.entries(roleConfig).map(([value, cfg]) => ({ value, label: cfg.label, color: cfg.color, bg: cfg.bg }));
