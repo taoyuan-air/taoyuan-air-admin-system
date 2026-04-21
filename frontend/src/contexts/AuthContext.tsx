@@ -59,16 +59,6 @@ const MOCK_USERS: (User & { password: string })[] = [
   },
 ];
 
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
-  clearMustChangePassword: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const saved = sessionStorage.getItem("auth_user");
