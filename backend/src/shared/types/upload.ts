@@ -7,13 +7,11 @@ export type DataType = LidarDataType | UAVDataType;
 export type UploadStatus = 'uploading' | 'completed' | 'failed' | 'cancelled';
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
 
-export type RoleCode = 'super_admin' | 'system_admin' | 'data_manager' | 'partner' | 'readonly';
+export type RoleCode = 'system_admin' | 'data_manager' | 'readonly';
 
 export const UPLOAD_ALLOWED_ROLES: RoleCode[] = [
-  'super_admin',
   'system_admin',
   'data_manager',
-  'partner',
 ];
 
 export interface UploadMetadata {
