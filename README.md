@@ -1,6 +1,6 @@
 # taoyuan-air-admin
 
-桃園空品後台管理系統（前後端分離）。
+taoyuan-air 後台管理系統。
 
 本專案包含：
 
@@ -18,7 +18,6 @@ taoyuan-air-admin/
 │  ├─ src/
 │  ├─ migrations/
 │  └─ .env
-├─ docs/
 └─ README.md
 ```
 
@@ -81,6 +80,14 @@ cd ../taoyuan-air-admin/backend
 npm run migrate
 ```
 
+### 4. 建立初始管理員帳號（只需一次）
+
+```bash
+npm run seed
+```
+
+執行後會建立一個 `system_admin` 帳號，並輸出臨時密碼。**首次登入後必須修改密碼。**
+
 ## 日常啟動（完整前後端測試）
 
 請開三個終端機，依序執行。
@@ -130,46 +137,21 @@ npm run dev
 http://localhost:5173
 ```
 
-## 完整測試流程（推薦）
+## 帳號設定
 
-### 1. 登入測試
+預設帳號（由 `npm run seed` 建立）：
 
-可用帳號：
+| 帳號  | 角色名稱   | 備註                   |
+| ----- | ---------- | ---------------------- |
+| admin | 系統管理員 | 首次登入需修改臨時密碼 |
 
-| 帳號    | 角色       |
-| ------- | ---------- |
-| admin   | 系統管理員 |
-| manager | 資料管理員 |
+角色說明：
 
-### 2. API 測試（可選）
-
-- `GET /health`
-- `POST /api/auth/login`
-- `POST /api/uploads`
-- `GET /api/uploads/progress/:uploadId`（SSE）
-- `GET /api/uploads/history`
-
-## 開發指令
-
-### frontend
-
-```bash
-cd frontend
-npm run dev
-npm run build
-npm run preview
-npm run lint
-```
-
-### backend
-
-```bash
-cd backend
-npm run dev
-npm run build
-npm start
-npm run migrate
-```
+| 角色名稱   | 權限                       |
+| ---------- | -------------------------- |
+| 系統管理員 | 全功能，含使用者管理       |
+| 資料管理員 | 可上傳資料，不可管理使用者 |
+| 唯讀使用者 | 僅可瀏覽，不可上傳或管理   |
 
 ## Demo 模式與真實 API 模式切換
 
@@ -180,7 +162,7 @@ npm run migrate
 
 ### 本地開發（真實 API）
 
-在 `frontend/.env.local` 設定：
+在 `frontend/.env` 設定：
 
 ```env
 VITE_DEMO_MODE=false
@@ -188,17 +170,19 @@ VITE_DEMO_MODE=false
 VITE_API_BASE_URL=
 ```
 
-### Vercel 展示（不部署 backend 也可看畫面）
+### Vercel Demo 展示
 
 在 Vercel Project Settings -> Environment Variables 設定：
 
 ```env
 VITE_DEMO_MODE=true
+VITE_MOCK_ADMIN_PASSWORD=<your-mock-admin-password>
+VITE_MOCK_MANAGER_PASSWORD=<your-mock-manager-password>
 ```
 
-此模式下登入與上傳會走前端 mock 流程，不依賴後端服務。
+Demo 模式下登入與上傳會走前端 mock 流程，不依賴後端服務。可參考 `frontend/.env.example` 了解可設定的環境變數。
 
 ## 備註
 
-- 關機重開後，不需要重跑 migration
+- 關機重開後，不需要重跑 migration 或 seed
 - 只要重新執行「日常啟動」三步驟即可
