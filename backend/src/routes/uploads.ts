@@ -53,13 +53,19 @@ router.post(
     const files = req.files as Express.Multer.File[];
     const dataCategory = req.body.dataCategory as DataCategory;
     const dataType = req.body.dataType as DataType;
-    const metadata: UploadMetadata = req.body.metadata
-      ? JSON.parse(req.body.metadata)
-      : {
-          collectionDate: new Date().toISOString().slice(0, 10),
-          locationDescription: "",
-          equipmentModel: "",
-        };
+    let metadata: UploadMetadata;
+    try {
+      metadata = req.body.metadata
+        ? JSON.parse(req.body.metadata)
+        : {
+            collectionDate: new Date().toISOString().slice(0, 10),
+            locationDescription: "",
+            equipmentModel: "",
+          };
+    } catch {
+      res.status(400).json({ error: "INVALID_METADATA", message: "metadata 格式錯誤" });
+      return;
+    }
 
     if (!files?.length) {
       res.status(400).json({ error: "NO_FILES", message: "未收到任何檔案" });
@@ -235,6 +241,58 @@ router.get(
   },
 );
 
+// DELETE /api/uploads/history/:uploadId
+router.delete(
+  "/history/:uploadId",
+  authenticateJWT,
+  async (req: Request, res: Response): Promise<void> => {
+    const user = req.user!;
+    const uploadId = parseInt(req.params.uploadId, 10);
+    if (Number.isNaN(uploadId)) {
+      res.status(400).json({ message: "無效的 uploadId" });
+      return;
+    }
+
+    const record = await FileUploadRepository.findById(uploadId);
+    if (!record) {
+      res.status(404).json({ error: ErrorCode.UPLOAD_NOT_FOUND });
+      return;
+    }
+
+    if (record.uploadStatus === "uploading") {
+      res.status(409).json({ message: "上傳進行中，請先取消上傳" });
+      return;
+    }
+
+    const isAdmin =
+      user.roleCode === "super_admin" || user.roleCode === "system_admin";
+    if (!isAdmin && record.userId !== user.userId) {
+      res
+        .status(403)
+        .json({ error: ErrorCode.FORBIDDEN, message: "無刪除此資料的權限" });
+      return;
+    }
+
+    if (record.filePath) {
+      await StorageService.deleteFile(record.filePath);
+    }
+
+    const deleted = await FileUploadRepository.deleteById(uploadId);
+    if (!deleted) {
+      res.status(404).json({ error: ErrorCode.UPLOAD_NOT_FOUND });
+      return;
+    }
+
+    ProgressService.delete(uploadId);
+    logUploadAction(user.userId, "UPLOAD_DELETE", uploadId, req.ip ?? "", {
+      fileName: record.fileName,
+      ownerUserId: record.userId,
+    });
+
+    res.json({ message: "歷史資料已刪除" });
+  },
+);
+
 // DELETE /api/uploads/:uploadId
 router.delete(
   "/:uploadId",
@@ -294,58 +352,6 @@ router.get(
       limit: filter.limit,
       records: result.records,
     });
-  },
-);
-
-// DELETE /api/uploads/history/:uploadId
-router.delete(
-  "/history/:uploadId",
-  authenticateJWT,
-  async (req: Request, res: Response): Promise<void> => {
-    const user = req.user!;
-    const uploadId = parseInt(req.params.uploadId, 10);
-    if (Number.isNaN(uploadId)) {
-      res.status(400).json({ message: "無效的 uploadId" });
-      return;
-    }
-
-    const record = await FileUploadRepository.findById(uploadId);
-    if (!record) {
-      res.status(404).json({ error: ErrorCode.UPLOAD_NOT_FOUND });
-      return;
-    }
-
-    if (record.uploadStatus === "uploading") {
-      res.status(409).json({ message: "上傳進行中，請先取消上傳" });
-      return;
-    }
-
-    const isAdmin =
-      user.roleCode === "super_admin" || user.roleCode === "system_admin";
-    if (!isAdmin && record.userId !== user.userId) {
-      res
-        .status(403)
-        .json({ error: ErrorCode.FORBIDDEN, message: "無刪除此資料的權限" });
-      return;
-    }
-
-    if (record.filePath) {
-      await StorageService.deleteFile(record.filePath);
-    }
-
-    const deleted = await FileUploadRepository.deleteById(uploadId);
-    if (!deleted) {
-      res.status(404).json({ error: ErrorCode.UPLOAD_NOT_FOUND });
-      return;
-    }
-
-    ProgressService.delete(uploadId);
-    logUploadAction(user.userId, "UPLOAD_DELETE", uploadId, req.ip ?? "", {
-      fileName: record.fileName,
-      ownerUserId: record.userId,
-    });
-
-    res.json({ message: "歷史資料已刪除" });
   },
 );
 

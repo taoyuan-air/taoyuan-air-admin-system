@@ -23,6 +23,72 @@ body {
   border-radius: 3px;
 }
 
+/* ── Custom Checkbox ── */
+.custom-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 4px;
+  background-color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+  vertical-align: middle;
+  position: relative;
+}
+
+.custom-checkbox:hover:not(:disabled) {
+  border-color: #6abe74;
+  box-shadow: 0 0 0 3px rgba(106, 190, 116, 0.12);
+}
+
+.custom-checkbox:focus-visible {
+  outline: none;
+  border-color: #6abe74;
+  box-shadow: 0 0 0 3px rgba(106, 190, 116, 0.2);
+}
+
+.custom-checkbox:checked {
+  background-color: #6abe74;
+  border-color: #6abe74;
+}
+
+.custom-checkbox:checked::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 7px;
+  border: 2px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translate(-0.5px, -1px);
+}
+
+.custom-checkbox:indeterminate {
+  background-color: #6abe74;
+  border-color: #6abe74;
+}
+
+.custom-checkbox:indeterminate::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 2px;
+  background-color: #fff;
+  border-radius: 1px;
+}
+
+.custom-checkbox:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background-color: #f3f4f6;
+}
+
 /* Responsive */
 @media (max-width: 767px) {
   .sidebar-overlay {

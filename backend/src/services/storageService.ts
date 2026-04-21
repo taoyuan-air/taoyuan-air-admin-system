@@ -4,6 +4,12 @@ import type { DataCategory, DataType } from '../shared/types/upload';
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
 
+const ALLOWED_CATEGORIES = new Set(['lidar', 'uav']);
+const ALLOWED_TYPES = new Set([
+  'point_cloud', 'wind_field', 'boundary_layer',
+  'sensor', 'flight_path', 'imagery', 'meteorological',
+]);
+
 export const StorageService = {
   async saveFile(
     tempPath: string,
@@ -11,11 +17,14 @@ export const StorageService = {
     dataCategory: DataCategory,
     dataType: DataType,
   ): Promise<string> {
+    if (!ALLOWED_CATEGORIES.has(dataCategory) || !ALLOWED_TYPES.has(dataType)) {
+      throw new Error(`不允許的 dataCategory 或 dataType: ${dataCategory}/${dataType}`);
+    }
     const destDir = path.join(UPLOAD_DIR, dataCategory, dataType);
     fs.mkdirSync(destDir, { recursive: true });
 
     const timestamp = Date.now();
-    const safeName = `${timestamp}_${originalName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const safeName = `${timestamp}_${path.basename(originalName).replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const destPath = path.join(destDir, safeName);
 
     fs.renameSync(tempPath, destPath);
@@ -25,9 +34,12 @@ export const StorageService = {
   },
 
   async deleteFile(filePath: string): Promise<void> {
-    const fullPath = path.join(UPLOAD_DIR, filePath);
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
+    const resolved = path.resolve(UPLOAD_DIR, filePath);
+    if (!resolved.startsWith(UPLOAD_DIR + path.sep) && resolved !== UPLOAD_DIR) {
+      throw new Error(`拒絕刪除路徑超出上傳目錄範圍: ${filePath}`);
+    }
+    if (fs.existsSync(resolved)) {
+      fs.unlinkSync(resolved);
     }
   },
 };

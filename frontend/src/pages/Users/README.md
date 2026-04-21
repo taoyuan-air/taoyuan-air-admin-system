@@ -137,3 +137,66 @@ DELETE /api/users/:id
   ↓
 從列表中移除（無法復原）
 ```
+
+---
+
+## 資料庫查詢（admin_users 表）
+
+### 連線方式
+
+**psql 直接連線：**
+
+```bash
+psql -h <DB_HOST> -p <DB_PORT> -U <DB_USER> -d <DB_NAME>
+```
+
+**透過 Docker 容器連線：**
+
+```bash
+docker exec -it <container_name> psql -U <DB_USER> -d <DB_NAME>
+```
+
+> 連線參數請參考 `backend/.env`。
+
+### 常用查詢
+
+```sql
+-- 查所有使用者
+SELECT user_id, username, full_name, email, role_code, is_active, created_at
+FROM admin_users
+ORDER BY created_at DESC;
+
+-- 查特定角色的使用者
+SELECT * FROM admin_users WHERE role_code = 'system_admin';
+SELECT * FROM admin_users WHERE role_code = 'data_manager';
+SELECT * FROM admin_users WHERE role_code = 'readonly';
+
+-- 查啟用中的帳號
+SELECT * FROM admin_users WHERE is_active = true;
+
+-- 查需要修改密碼的帳號
+SELECT username, full_name, created_at FROM admin_users WHERE must_change_password = true;
+
+-- 查某使用者的上傳記錄（跨表 JOIN）
+SELECT u.username, f.file_name, f.data_category, f.upload_status, f.created_at
+FROM admin_users u
+JOIN file_uploads f ON u.user_id = f.user_id
+WHERE u.username = 'admin'
+ORDER BY f.created_at DESC;
+```
+
+### 欄位說明
+
+| 欄位                  | 說明                                                   |
+| --------------------- | ------------------------------------------------------ |
+| `user_id`             | 使用者 ID                                              |
+| `username`            | 帳號（唯一，建立後不可修改）                           |
+| `full_name`           | 姓名                                                   |
+| `email`               | Email                                                  |
+| `role_code`           | `system_admin` \| `data_manager` \| `readonly`         |
+| `organization`        | 所屬組織                                               |
+| `upload_quota_gb`     | 上傳配額（GB）                                         |
+| `is_active`           | 帳號是否啟用                                           |
+| `must_change_password`| 是否需要修改密碼（首次登入為 `true`）                  |
+| `last_login`          | 最後登入時間                                           |
+| `created_at`          | 帳號建立時間                                           |

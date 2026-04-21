@@ -109,7 +109,7 @@ export const FileUploadRepository = {
       "DELETE FROM file_uploads WHERE upload_id = $1",
       [uploadId],
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   },
 
   async findAll(

@@ -116,3 +116,70 @@ Step 4  顯示上傳結果（成功 / 失敗統計）
 - 支援依檔案名稱、資料類型、上傳者關鍵字搜尋
 - 每頁筆數可選：10 / 30 / 50 / 100 / 200 / All
 - 狀態為 `processing`（上傳中）的記錄無法刪除，需先取消上傳
+
+---
+
+## 資料庫查詢（file_uploads 表）
+
+### 連線方式
+
+**psql 直接連線：**
+
+```bash
+psql -h <DB_HOST> -p <DB_PORT> -U <DB_USER> -d <DB_NAME>
+```
+
+**透過 Docker 容器連線：**
+
+```bash
+docker exec -it <container_name> psql -U <DB_USER> -d <DB_NAME>
+```
+
+> 連線參數請參考 `backend/.env`。
+
+### 常用查詢
+
+```sql
+-- 查所有上傳記錄（最新優先）
+SELECT upload_id, user_id, file_name, file_size, data_category,
+       upload_status, validation_status, created_at
+FROM file_uploads
+ORDER BY created_at DESC;
+
+-- 查特定使用者的上傳
+SELECT * FROM file_uploads WHERE user_id = 1;
+
+-- 查上傳成功且驗證通過
+SELECT * FROM file_uploads
+WHERE upload_status = 'completed' AND validation_status = 'valid';
+
+-- 查驗證失敗（含錯誤原因）
+SELECT file_name, validation_errors, created_at
+FROM file_uploads
+WHERE validation_status = 'invalid';
+
+-- 查 metadata 欄位
+SELECT file_name, metadata FROM file_uploads WHERE metadata IS NOT NULL;
+
+-- 依資料類型篩選
+SELECT * FROM file_uploads WHERE data_category = 'lidar';
+SELECT * FROM file_uploads WHERE data_category = 'uav';
+```
+
+### 欄位說明
+
+| 欄位               | 說明                                                        |
+| ------------------ | ----------------------------------------------------------- |
+| `upload_id`        | 上傳記錄 ID                                                 |
+| `user_id`          | 上傳者 ID（對應 `admin_users.user_id`）                     |
+| `file_name`        | 原始檔案名稱                                                |
+| `file_path`        | 伺服器儲存路徑                                              |
+| `file_size`        | 檔案大小（bytes）                                           |
+| `data_category`    | `lidar` \| `uav`                                            |
+| `data_type`        | 子類型，如 `point_cloud`、`sensor` 等                       |
+| `upload_status`    | `uploading` \| `completed` \| `failed` \| `cancelled`       |
+| `validation_status`| `pending` \| `valid` \| `invalid`                           |
+| `validation_errors`| JSONB，驗證失敗的錯誤詳情                                   |
+| `metadata`         | JSONB，含 `collectionDate`、`locationDescription`、`equipmentModel` |
+| `created_at`       | 上傳時間                                                    |
+| `processed_at`     | 處理完成時間                                                |
