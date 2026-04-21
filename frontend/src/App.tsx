@@ -9,6 +9,7 @@ import Upload from './pages/Upload';
 import DataSources from './pages/DataSources';
 import Stations from './pages/Stations';
 import Users from './pages/Users';
+import ChangePasswordPage from './pages/ChangePassword';
 import LoginPage from './pages/Login';
 
 function AppContent() {
@@ -22,6 +23,9 @@ function AppContent() {
   }, []);
 
   if (!user) return <LoginPage />;
+
+  // 已登入但需強制修改密碼
+  if (user.mustChangePassword) return <ChangePasswordPage />;
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#F4F2E9' }}>

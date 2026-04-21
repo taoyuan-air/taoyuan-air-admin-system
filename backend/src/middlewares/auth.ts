@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { pool } from '../db/pool';
 import { ErrorCode, UPLOAD_ALLOWED_ROLES } from '../shared/types/upload';
-import type { JwtPayload } from '../shared/types/upload';
+import type { JwtPayload, RoleCode } from '../shared/types/upload';
 
 declare global {
   namespace Express {
@@ -27,6 +27,24 @@ export function authenticateJWT(req: Request, res: Response, next: NextFunction)
   } catch {
     res.status(401).json({ error: ErrorCode.UNAUTHORIZED, message: 'Token 無效或已過期' });
   }
+}
+
+export function requirePasswordChanged(req: Request, res: Response, next: NextFunction): void {
+  if (req.user!.mustChangePassword) {
+    res.status(403).json({ error: ErrorCode.PASSWORD_CHANGE_REQUIRED, message: '請先完成密碼修改' });
+    return;
+  }
+  next();
+}
+
+export function requireRole(...allowedRoles: RoleCode[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!allowedRoles.includes(req.user!.roleCode)) {
+      res.status(403).json({ error: ErrorCode.FORBIDDEN, message: '權限不足' });
+      return;
+    }
+    next();
+  };
 }
 
 export function requireUploadPermission(req: Request, res: Response, next: NextFunction): void {

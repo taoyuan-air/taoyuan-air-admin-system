@@ -10,6 +10,7 @@ export interface User {
   organization?: string;
   uploadQuotaGb: number;
   isActive: boolean;
+  mustChangePassword: boolean;
   lastLogin?: string;
   createdAt: string;
 }

@@ -59,6 +59,10 @@ export enum ErrorCode {
   UPLOAD_NOT_FOUND = 'UPLOAD_NOT_FOUND',
   UPLOAD_ALREADY_COMPLETED = 'UPLOAD_ALREADY_COMPLETED',
   STORAGE_UNAVAILABLE = 'STORAGE_UNAVAILABLE',
+  ACCOUNT_DISABLED = 'ACCOUNT_DISABLED',
+  INVALID_PASSWORD = 'INVALID_PASSWORD',
+  WRONG_PASSWORD = 'WRONG_PASSWORD',
+  PASSWORD_CHANGE_REQUIRED = 'PASSWORD_CHANGE_REQUIRED',
 }
 
 // JWT Payload
@@ -67,4 +71,5 @@ export interface JwtPayload {
   username: string;
   roleCode: RoleCode;
   uploadQuotaGb: number;
+  mustChangePassword: boolean;
 }
