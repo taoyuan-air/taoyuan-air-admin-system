@@ -1,12 +1,3 @@
-# taoyuan-air-admin
-
-taoyuan-air 後台管理系統。
-
-本專案包含：
-
-- `frontend/`: React + Vite 前端（預設 `http://localhost:5173`）
-- `backend/`: Express + PostgreSQL 後端 API（預設 `http://localhost:3001`）
-
 ## 專案架構
 
 ```text
@@ -20,6 +11,11 @@ taoyuan-air-admin/
 │  └─ .env
 └─ README.md
 ```
+
+本專案包含：
+
+- `frontend/`: React + Vite 前端（預設 `http://localhost:5173`）
+- `backend/`: Express + PostgreSQL 後端 API（預設 `http://localhost:3001`）
 
 ## 功能模組
 

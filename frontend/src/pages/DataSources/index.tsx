@@ -10,24 +10,24 @@ import type { SourceRecord } from '../../contexts/AppDataContext';
 // ── Mock sync logs per source ──────────────────────────────────────────────
 const mockLogs: Record<string, { time: string; status: 'success' | 'error' | 'pending'; message: string }[]> = {
   '1': [
+    { time: '2026-04-01 06:30', status: 'pending', message: '等待光達系統回應中...' },
+    { time: '2026-04-01 04:30', status: 'success', message: '同步成功，取得點雲資料 245 MB' },
+  ],
+  '2': [
+    { time: '2026-03-31 15:00', status: 'error', message: '連線逾時，無人機系統離線' },
+    { time: '2026-03-31 13:00', status: 'error', message: '連線逾時，無人機系統離線' },
+    { time: '2026-03-31 11:00', status: 'success', message: '同步成功，取得飛行資料 12 MB' },
+  ],
+  '3': [
     { time: '2026-04-01 08:30', status: 'success', message: '同步成功，取得 1,240 筆資料' },
     { time: '2026-04-01 07:30', status: 'success', message: '同步成功，取得 1,198 筆資料' },
     { time: '2026-04-01 06:30', status: 'error',   message: 'HTTP 503 Service Unavailable' },
     { time: '2026-04-01 05:30', status: 'success', message: '同步成功，取得 1,215 筆資料' },
   ],
-  '2': [
+  '4': [
     { time: '2026-04-01 08:25', status: 'success', message: '同步成功，取得 88 筆觀測資料' },
     { time: '2026-04-01 07:55', status: 'success', message: '同步成功，取得 91 筆觀測資料' },
     { time: '2026-04-01 07:25', status: 'success', message: '同步成功，取得 87 筆觀測資料' },
-  ],
-  '3': [
-    { time: '2026-04-01 06:30', status: 'pending', message: '等待光達系統回應中...' },
-    { time: '2026-04-01 04:30', status: 'success', message: '同步成功，取得點雲資料 245 MB' },
-  ],
-  '4': [
-    { time: '2026-03-31 15:00', status: 'error', message: '連線逾時，無人機系統離線' },
-    { time: '2026-03-31 13:00', status: 'error', message: '連線逾時，無人機系統離線' },
-    { time: '2026-03-31 11:00', status: 'success', message: '同步成功，取得飛行資料 12 MB' },
   ],
   '5': [
     { time: '2026-04-01 08:28', status: 'success', message: '同步成功，取得 320 個感測器資料' },
