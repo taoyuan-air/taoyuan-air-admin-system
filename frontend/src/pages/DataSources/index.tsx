@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshCw, Clock, Plug, Settings, ScrollText, X, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { RefreshCw, Clock, Plug, Settings, ScrollText, X, CheckCircle, XCircle, AlertCircle, Database } from 'lucide-react';
 import Select from 'react-select';
 import Card from '../../components/Card';
 import Header from '../../components/Layout/Header';
@@ -7,7 +7,6 @@ import StatusBadge from '../../components/StatusBadge';
 import { useAppData } from '../../contexts/AppDataContext';
 import type { SourceRecord } from '../../contexts/AppDataContext';
 
-// ── Mock sync logs per source ──────────────────────────────────────────────
 const mockLogs: Record<string, { time: string; status: 'success' | 'error' | 'pending'; message: string }[]> = {
   '1': [
     { time: '2026-04-01 06:30', status: 'pending', message: '等待光達系統回應中...' },
@@ -38,27 +37,20 @@ const mockLogs: Record<string, { time: string; status: 'success' | 'error' | 'pe
 };
 
 const SOURCE_TYPES = ['EPA', 'CWA', 'IoT', 'Lidar', 'UAV', 'WindProfiler'] as const;
-
 const sourceTypeOptions = SOURCE_TYPES.map(t => ({ value: t, label: t }));
 
 const selectStyles = {
   control: (base: object, state: { isFocused: boolean }) => ({
-    ...base,
-    borderRadius: 8,
+    ...base, borderRadius: 8, fontSize: 13, minHeight: 38,
     border: `1px solid ${state.isFocused ? '#6abe74' : 'rgba(0,0,0,0.12)'}`,
     boxShadow: state.isFocused ? '0 0 0 2px rgba(106,190,116,0.2)' : 'none',
-    backgroundColor: '#fff',
-    fontSize: 13,
-    minHeight: 38,
-    '&:hover': { borderColor: '#6abe74' },
+    backgroundColor: '#fff', '&:hover': { borderColor: '#6abe74' },
   }),
   option: (base: object, state: { isSelected: boolean; isFocused: boolean }) => ({
-    ...base,
+    ...base, fontSize: 13, cursor: 'pointer',
     backgroundColor: state.isSelected ? 'rgba(106,190,116,0.15)' : state.isFocused ? 'rgba(106,190,116,0.06)' : '#fff',
     color: state.isSelected ? '#2d6a4f' : '#374151',
     fontWeight: state.isSelected ? 600 : 400,
-    fontSize: 13,
-    cursor: 'pointer',
   }),
   singleValue: (base: object) => ({ ...base, color: '#374151', fontWeight: 600 }),
   indicatorSeparator: () => ({ display: 'none' }),
@@ -68,9 +60,7 @@ const selectStyles = {
   menuPortal: (base: object) => ({ ...base, zIndex: 9999 }),
 };
 
-const emptyForm = {
-  name: '', type: 'EPA' as SourceRecord['type'], endpoint: '', frequency: 60,
-};
+const emptyForm = { name: '', type: 'EPA' as SourceRecord['type'], endpoint: '', frequency: 60 };
 
 const inputStyle = {
   width: '100%', padding: '9px 12px', borderRadius: 8,
@@ -103,20 +93,13 @@ export default function DataSources() {
     setTimeout(() => setTestingId(null), 2000);
   };
 
-  const openAdd = () => {
-    setEditingSrc(null);
-    setForm(emptyForm);
-    setErrors({});
-    setShowForm(true);
-  };
-
+  const openAdd = () => { setEditingSrc(null); setForm(emptyForm); setErrors({}); setShowForm(true); };
   const openEdit = (src: SourceRecord) => {
     setEditingSrc(src);
     setForm({ name: src.name, type: src.type as typeof emptyForm['type'], endpoint: src.endpoint, frequency: src.frequency });
     setErrors({});
     setShowForm(true);
   };
-
   const closeForm = () => { setShowForm(false); setEditingSrc(null); setErrors({}); };
 
   const validate = () => {
@@ -195,7 +178,19 @@ export default function DataSources() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              {(src.type === 'Lidar' || src.type === 'UAV') && (
+                <button onClick={() => window.open(`/source-db/${src.type.toLowerCase()}`, '_blank')} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 8,
+                  border: '1px solid rgba(106,190,116,0.4)',
+                  backgroundColor: 'rgba(106,190,116,0.08)', color: '#4a9e55',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  <Database size={12} />
+                  瀏覽資料庫
+                </button>
+              )}
               <button onClick={() => handleTest(src.id)} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '6px 14px', borderRadius: 8,
@@ -279,8 +274,7 @@ export default function DataSources() {
                 <div>
                   <label style={labelStyle}>同步頻率（分鐘）</label>
                   <input style={inputStyle} type="number" min={0} max={1440}
-                    value={form.frequency}
-                    placeholder="0 = 手動"
+                    value={form.frequency} placeholder="0 = 手動"
                     onChange={e => setForm(p => ({ ...p, frequency: Number(e.target.value) }))} />
                 </div>
               </div>

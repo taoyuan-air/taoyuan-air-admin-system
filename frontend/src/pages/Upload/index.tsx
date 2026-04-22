@@ -202,7 +202,7 @@ interface PageSizeSelectOption {
 const historyPageSizeOptions: PageSizeSelectOption[] = PAGE_SIZE_OPTIONS.map(
   (option) => ({
     value: option,
-    label: option === "All" ? "All" : `${option} 筆`,
+    label: option === "All" ? "全部" : `${option} 筆`,
   }),
 );
 
