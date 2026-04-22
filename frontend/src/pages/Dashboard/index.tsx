@@ -1,21 +1,69 @@
+import { useEffect, useState } from "react";
 import { Upload, Database, Radio, AlertCircle } from "lucide-react";
 import Card from "../../components/Card";
 import Header from "../../components/Layout/Header";
 import StatusBadge from "../../components/StatusBadge";
 import { useAppData } from "../../contexts/AppDataContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { uploadService } from "../../services/uploadService";
+import { isDemoMode } from "../../config/api";
+
+function formatSize(bytes: number): string {
+  return bytes < 1024 * 1024
+    ? `${(bytes / 1024).toFixed(1)} KB`
+    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+const DATA_TYPE_LABELS: Record<string, string> = {
+  point_cloud: "點雲資料",
+  wind_field: "風場資料",
+  boundary_layer: "大氣邊界層",
+  sensor: "感測器資料",
+  flight_path: "飛行軌跡",
+  imagery: "影像資料",
+  meteorological: "氣象資料",
+};
 
 export default function Dashboard() {
-  const { sources, stations, uploadHistory } = useAppData();
+  const { sources, stations, uploadHistory, setUploadHistory } = useAppData();
+  const { token } = useAuth();
+  const [todayUploads, setTodayUploads] = useState(0);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const todayUploads = uploadHistory.filter(
-    (r) => r.time.startsWith(today) && r.status === "completed",
-  ).length;
-  const activeSources = sources.filter((s) => s.active).length;
-  const activeStations = stations.filter((s) => s.active).length;
-  const alerts =
-    sources.filter((s) => s.status === "error").length +
-    uploadHistory.filter((r) => r.status === "failed").length;
+  useEffect(() => {
+    if (isDemoMode || !token) return;
+    const today = new Date().toISOString().slice(0, 10);
+    // fetch 今日上傳數量
+    uploadService.getHistory(token, { page: "1", limit: "9999", search: today }).then((res) => {
+      setTodayUploads(
+        res.records.filter(
+          (r) => r.createdAt.startsWith(today) && r.uploadStatus === "completed"
+        ).length
+      );
+    }).catch(() => {});
+    // fetch 最近 5 筆顯示
+    uploadService.getHistory(token, { page: "1", limit: "5" }).then((res) => {
+      setUploadHistory(
+        res.records.map((r) => ({
+          id: r.uploadId,
+          name: r.fileName,
+          type: DATA_TYPE_LABELS[r.dataType] ?? r.dataType,
+          size: formatSize(r.fileSize),
+          status:
+            r.uploadStatus === "completed"
+              ? "completed"
+              : r.uploadStatus === "failed"
+                ? "failed"
+                : "processing",
+          time: r.createdAt,
+          user: r.fileName,
+        }))
+      );
+    }).catch(() => {});
+  }, [token, setUploadHistory]);
+
+  const activeSources = sources.length;
+  const activeStations = stations.length;
+  const alerts = 0;
 
   const stats = [
     { label: "今日上傳檔案", value: todayUploads, unit: "個", Icon: Upload },
