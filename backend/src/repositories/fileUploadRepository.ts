@@ -20,6 +20,7 @@ interface CreateUploadInput {
 
 interface HistoryFilter {
   userId?: number;
+  dataCategory?: string;
   dataType?: string;
   status?: string;
   dateFrom?: string;
@@ -114,7 +115,7 @@ export const FileUploadRepository = {
 
   async findAll(
     filter: HistoryFilter,
-  ): Promise<{ total: number; records: FileUploadRecord[] }> {
+  ): Promise<{ total: number; records: (FileUploadRecord & { username?: string })[] }> {
     const page = filter.page ?? 1;
     const limit = filter.limit ?? 20;
     const offset = (page - 1) * limit;
@@ -124,39 +125,53 @@ export const FileUploadRepository = {
     let idx = 1;
 
     if (filter.userId !== undefined) {
-      conditions.push(`user_id = $${idx++}`);
+      conditions.push(`fu.user_id = $${idx++}`);
       params.push(filter.userId);
     }
+    if (filter.dataCategory) {
+      conditions.push(`fu.data_category = $${idx++}`);
+      params.push(filter.dataCategory);
+    }
     if (filter.dataType) {
-      conditions.push(`data_type = $${idx++}`);
+      conditions.push(`fu.data_type = $${idx++}`);
       params.push(filter.dataType);
     }
     if (filter.status) {
-      conditions.push(`upload_status = $${idx++}`);
+      conditions.push(`fu.upload_status = $${idx++}`);
       params.push(filter.status);
     }
     if (filter.dateFrom) {
-      conditions.push(`created_at >= $${idx++}`);
+      conditions.push(`fu.created_at >= $${idx++}`);
       params.push(filter.dateFrom);
     }
     if (filter.dateTo) {
-      conditions.push(`created_at <= $${idx++}`);
+      conditions.push(`fu.created_at <= $${idx++}`);
       params.push(filter.dateTo);
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) FROM file_uploads ${where}`,
+      `SELECT COUNT(*) FROM file_uploads fu ${where}`,
       params,
     );
     const total = parseInt(countResult.rows[0].count, 10);
 
     const { rows } = await pool.query(
-      `SELECT * FROM file_uploads ${where} ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx}`,
+      `SELECT fu.*, u.username
+       FROM file_uploads fu
+       LEFT JOIN admin_users u ON u.user_id = fu.user_id
+       ${where}
+       ORDER BY fu.created_at DESC LIMIT $${idx++} OFFSET $${idx}`,
       [...params, limit, offset],
     );
 
-    return { total, records: rows.map(toRecord) };
+    return {
+      total,
+      records: rows.map((row) => ({
+        ...toRecord(row),
+        username: row.username as string | undefined,
+      })),
+    };
   },
 };

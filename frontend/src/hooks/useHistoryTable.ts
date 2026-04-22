@@ -153,7 +153,7 @@ export function useHistoryTable({
                 ? "failed"
                 : "processing",
           time: formatTime(r.createdAt),
-          user: r.fileName, // overridden below — uploadService doesn't return uploader
+          user: r.username ?? `uid:${r.uploadId}`,
         })),
       );
     } catch (err) {

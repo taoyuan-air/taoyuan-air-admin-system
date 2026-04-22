@@ -321,6 +321,23 @@ router.delete(
   },
 );
 
+// GET /api/uploads/by-category/:category  (category = 'lidar' | 'uav')
+router.get(
+  "/by-category/:category",
+  authenticateJWT,
+  async (req: Request, res: Response): Promise<void> => {
+    const category = req.params.category as DataCategory;
+    if (category !== "lidar" && category !== "uav") {
+      res.status(400).json({ message: "category 必須為 lidar 或 uav" });
+      return;
+    }
+    const page  = req.query.page  ? parseInt(req.query.page  as string, 10) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+    const result = await FileUploadRepository.findAll({ dataCategory: category, page, limit });
+    res.json({ total: result.total, page, limit, records: result.records });
+  },
+);
+
 // GET /api/uploads/history
 router.get(
   "/history",
@@ -334,9 +351,9 @@ router.get(
       userId:
         isAdmin && req.query.userId
           ? parseInt(req.query.userId as string, 10)
-          : !isAdmin
-            ? user.userId
-            : undefined,
+          : isAdmin && req.query.all === "true"
+            ? undefined
+            : user.userId,
       dataType: req.query.dataType as string | undefined,
       status: req.query.status as string | undefined,
       dateFrom: req.query.dateFrom as string | undefined,

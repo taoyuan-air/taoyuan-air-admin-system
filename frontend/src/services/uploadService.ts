@@ -43,6 +43,7 @@ export interface HistoryRecord {
   validationStatus: string;
   metadata?: object;
   createdAt: string;
+  username?: string;
 }
 
 export interface HistoryResponse {

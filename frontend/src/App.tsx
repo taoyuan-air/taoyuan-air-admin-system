@@ -7,6 +7,7 @@ import { Menu } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
 import DataSources from './pages/DataSources';
+import SourceDatabase from './pages/SourceDatabase';
 import Stations from './pages/Stations';
 import Users from './pages/Users';
 import ChangePasswordPage from './pages/ChangePassword';
@@ -73,6 +74,7 @@ function AppContent() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/upload" element={<GuardedRoute path="/upload" element={<Upload />} />} />
           <Route path="/data-sources" element={<DataSources />} />
+          <Route path="/source-db/:category" element={<SourceDatabase />} />
           <Route path="/stations" element={<Stations />} />
           <Route path="/users" element={<GuardedRoute path="/users" element={<Users />} />} />
         </Routes>
