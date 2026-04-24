@@ -11,7 +11,6 @@ import {
   CloudUpload,
   FileText,
   Package,
-  Plane,
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
@@ -261,7 +260,6 @@ export default function Upload() {
   const finishedCountRef = useRef(0);
   const totalCountRef = useRef(0);
 
-  const [hoveredCategory] = useState<DataCategory | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentConfig = uavType ? uavConfig[uavType] : null;
