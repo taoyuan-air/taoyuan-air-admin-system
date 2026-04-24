@@ -11,6 +11,7 @@ export interface SourceRecord {
   active: boolean;
   lastSync: string;
   status: "success" | "error" | "pending";
+  transferMode?: 'sftp' | 'api' | 'manual';
 }
 
 export interface StationRecord {
@@ -38,14 +39,37 @@ export interface HistoryRecord {
 
 const initialSources: SourceRecord[] = [
   {
-    id: "1",
-    name: "光達系統 LiDAR",
-    type: "Lidar",
-    endpoint: "http://lidar.internal/api/data",
-    frequency: 120,
+    id: "6",
+    name: "NAQO 中大空品站",
+    type: "SFTP",
+    endpoint: "sftp://140.115.80.244/NAQO",
+    frequency: 60,
     active: true,
-    lastSync: "2026-04-01 06:30",
-    status: "pending",
+    lastSync: "2026-04-01 08:00",
+    status: "success",
+    transferMode: "sftp",
+  },
+  {
+    id: "7",
+    name: "WindLidar 風廓線光達",
+    type: "SFTP",
+    endpoint: "sftp://140.115.80.244/WindLidar",
+    frequency: 60,
+    active: true,
+    lastSync: "2026-04-01 08:00",
+    status: "success",
+    transferMode: "sftp",
+  },
+  {
+    id: "8",
+    name: "MPL 微脈衝光達",
+    type: "SFTP",
+    endpoint: "sftp://140.115.80.244/MPL",
+    frequency: 60,
+    active: true,
+    lastSync: "2026-04-01 08:00",
+    status: "success",
+    transferMode: "sftp",
   },
   {
     id: "2",
@@ -56,6 +80,17 @@ const initialSources: SourceRecord[] = [
     active: false,
     lastSync: "2026-03-31 15:00",
     status: "error",
+    transferMode: "manual",
+  },
+  {
+    id: "1",
+    name: "光達系統 LiDAR",
+    type: "Lidar",
+    endpoint: "http://lidar.internal/api/data",
+    frequency: 120,
+    active: true,
+    lastSync: "2026-04-01 06:30",
+    status: "pending",
   },
   {
     id: "3",

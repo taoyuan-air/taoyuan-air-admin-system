@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { RefreshCw, Clock, Plug, Settings, ScrollText, X, CheckCircle, XCircle, AlertCircle, Database } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { RefreshCw, Clock, Plug, Settings, ScrollText, X, CheckCircle, XCircle, AlertCircle, Database, ServerCog } from 'lucide-react';
 import Select from 'react-select';
 import Card from '../../components/Card';
 import Header from '../../components/Layout/Header';
@@ -36,7 +37,26 @@ const mockLogs: Record<string, { time: string; status: 'success' | 'error' | 'pe
   ],
 };
 
-const SOURCE_TYPES = ['EPA', 'CWA', 'IoT', 'Lidar', 'UAV', 'WindProfiler'] as const;
+const mockSftpLogs: Record<string, { time: string; fileName: string; dataTime: string; status: 'parsed' | 'failed' | 'received'; errorMsg?: string }[]> = {
+  '6': [
+    { time: '2026-04-01 08:05', fileName: 'NAQO_20260401_08.json', dataTime: '2026-04-01 08:00', status: 'parsed' },
+    { time: '2026-04-01 07:05', fileName: 'NAQO_20260401_07.json', dataTime: '2026-04-01 07:00', status: 'parsed' },
+    { time: '2026-04-01 06:05', fileName: 'NAQO_20260401_06.json', dataTime: '2026-04-01 06:00', status: 'failed', errorMsg: '欄位缺失：pm25' },
+    { time: '2026-04-01 05:05', fileName: 'NAQO_20260401_05.json', dataTime: '2026-04-01 05:00', status: 'parsed' },
+  ],
+  '7': [
+    { time: '2026-04-01 08:03', fileName: 'WindLidar_20260401_08.csv', dataTime: '2026-04-01 08:00', status: 'parsed' },
+    { time: '2026-04-01 07:03', fileName: 'WindLidar_20260401_07.csv', dataTime: '2026-04-01 07:00', status: 'parsed' },
+    { time: '2026-04-01 06:03', fileName: 'WindLidar_20260401_06.csv', dataTime: '2026-04-01 06:00', status: 'parsed' },
+  ],
+  '8': [
+    { time: '2026-04-01 08:04', fileName: 'MPL_20260401_08.csv', dataTime: '2026-04-01 08:00', status: 'parsed' },
+    { time: '2026-04-01 07:04', fileName: 'MPL_20260401_07.csv', dataTime: '2026-04-01 07:00', status: 'received' },
+    { time: '2026-04-01 06:04', fileName: 'MPL_20260401_06.csv', dataTime: '2026-04-01 06:00', status: 'parsed' },
+  ],
+};
+
+const SOURCE_TYPES = ['EPA', 'CWA', 'IoT', 'Lidar', 'UAV', 'WindProfiler', 'SFTP'] as const;
 const sourceTypeOptions = SOURCE_TYPES.map(t => ({ value: t, label: t }));
 
 const selectStyles = {
@@ -79,12 +99,14 @@ const logStatusIcon = (s: string) => {
 
 export default function DataSources() {
   const { sources, setSources } = useAppData();
+  const navigate = useNavigate();
   const [testingId, setTestingId]   = useState<string | null>(null);
   const [showForm, setShowForm]     = useState(false);
   const [editingSrc, setEditingSrc] = useState<SourceRecord | null>(null);
   const [form, setForm]             = useState(emptyForm);
   const [errors, setErrors]         = useState<Partial<typeof emptyForm>>({});
   const [logSrc, setLogSrc]         = useState<SourceRecord | null>(null);
+  const [sftpLogSrc, setSftpLogSrc] = useState<SourceRecord | null>(null);
 
   const isEditing = editingSrc !== null;
 
@@ -170,7 +192,10 @@ export default function DataSources() {
             }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <RefreshCw size={12} color="#6abe74" />
-                同步頻率：<strong style={{ color: '#374151' }}>{src.frequency > 0 ? `每 ${src.frequency} 分鐘` : '手動'}</strong>
+                {src.transferMode === 'sftp'
+                  ? <><strong style={{ color: '#374151' }}>逐時接收</strong>（SFTP）</>
+                  : <>同步頻率：<strong style={{ color: '#374151' }}>{src.frequency > 0 ? `每 ${src.frequency} 分鐘` : '手動'}</strong></>
+                }
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Clock size={12} color="#6abe74" />
@@ -179,8 +204,12 @@ export default function DataSources() {
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              {(src.type === 'Lidar' || src.type === 'UAV') && (
-                <button onClick={() => window.open(`/source-db/${src.type.toLowerCase()}`, '_blank')} style={{
+              {(src.type === 'Lidar' || src.type === 'UAV' || src.type === 'SFTP') && (
+                <button onClick={() => {
+                  const catMap: Record<string, string> = { '6': 'naqo', '7': 'windlidar', '8': 'mpl' };
+                  const cat = catMap[src.id] ?? src.type.toLowerCase();
+                  navigate(`/source-db/${cat}`);
+                }} style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '6px 14px', borderRadius: 8,
                   border: '1px solid rgba(106,190,116,0.4)',
@@ -191,16 +220,29 @@ export default function DataSources() {
                   瀏覽資料庫
                 </button>
               )}
-              <button onClick={() => handleTest(src.id)} style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 14px', borderRadius: 8,
-                border: '1px solid rgba(106,190,116,0.4)',
-                backgroundColor: 'transparent', color: '#6abe74',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer',
-              }}>
-                <Plug size={12} />
-                {testingId === src.id ? '測試中...' : '測試連線'}
-              </button>
+              {src.type === 'SFTP' ? (
+                <button onClick={() => setSftpLogSrc(src)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 8,
+                  border: '1px solid rgba(106,190,116,0.4)',
+                  backgroundColor: 'transparent', color: '#6abe74',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  <ServerCog size={12} />
+                  傳輸記錄
+                </button>
+              ) : (
+                <button onClick={() => handleTest(src.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 8,
+                  border: '1px solid rgba(106,190,116,0.4)',
+                  backgroundColor: 'transparent', color: '#6abe74',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}>
+                  <Plug size={12} />
+                  {testingId === src.id ? '測試中...' : '測試連線'}
+                </button>
+              )}
               <button onClick={() => openEdit(src)} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '6px 14px', borderRadius: 8,
@@ -319,7 +361,7 @@ export default function DataSources() {
             boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           }} onClick={e => e.stopPropagation()}>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 2 }}>同步日誌</h2>
                 <div style={{ fontSize: 12, color: '#999' }}>{logSrc.name}</div>
@@ -354,14 +396,65 @@ export default function DataSources() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── SFTP 傳輸記錄 Modal ── */}
+      {sftpLogSrc && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setSftpLogSrc(null)}>
+          <div style={{
+            backgroundColor: '#F4F2E9', borderRadius: 20, padding: 28,
+            width: 'min(600px, calc(100vw - 32px))',
+            maxHeight: 'calc(100vh - 40px)', overflowY: 'auto',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 2 }}>SFTP 傳輸記錄</h2>
+                <div style={{ fontSize: 12, color: '#999' }}>{sftpLogSrc.name}</div>
+              </div>
+              <button onClick={() => setSftpLogSrc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
+                <X size={18} color="#999" />
+              </button>
+            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button onClick={() => setLogSrc(null)} style={{
-                padding: '9px 20px', borderRadius: 10,
-                border: '1px solid rgba(0,0,0,0.12)',
-                backgroundColor: 'transparent', color: '#666',
-                fontSize: 13, cursor: 'pointer',
-              }}>關閉</button>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                    {['檔案名稱', '資料時間', '狀態', '接收時間', '錯誤訊息'].map(h => (
+                      <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: '#999', fontWeight: 600 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(mockSftpLogs[sftpLogSrc.id] ?? []).length === 0 ? (
+                    <tr><td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#999' }}>尚無傳輸記錄</td></tr>
+                  ) : (mockSftpLogs[sftpLogSrc.id] ?? []).map((log, i) => {
+                    const statusColor = log.status === 'parsed' ? '#6abe74' : log.status === 'failed' ? '#e57373' : '#f0a500';
+                    const statusLabel = log.status === 'parsed' ? '已解析' : log.status === 'failed' ? '失敗' : '已接收';
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                        <td style={{ padding: '10px', color: '#374151', fontFamily: 'monospace', fontSize: 11 }}>{log.fileName}</td>
+                        <td style={{ padding: '10px', color: '#666' }}>{log.dataTime}</td>
+                        <td style={{ padding: '10px' }}>
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                            color: statusColor,
+                            backgroundColor: log.status === 'parsed' ? 'rgba(106,190,116,0.12)' : log.status === 'failed' ? 'rgba(229,115,115,0.12)' : 'rgba(240,165,0,0.12)',
+                          }}>{statusLabel}</span>
+                        </td>
+                        <td style={{ padding: '10px', color: '#666' }}>{log.time}</td>
+                        <td style={{ padding: '10px', color: '#e57373', fontSize: 11 }}>{log.errorMsg ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
