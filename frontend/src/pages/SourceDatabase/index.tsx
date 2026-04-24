@@ -25,6 +25,7 @@ interface DbRecord {
 const DATA_TYPE_LABELS: Record<string, string> = {
   point_cloud: '點雲資料', wind_field: '風場資料', boundary_layer: '大氣邊界層',
   sensor: '感測器資料', flight_path: '飛行軌跡', imagery: '影像資料', meteorological: '氣象資料',
+  hourly_obs: '逐時觀測',
 };
 
 function formatSize(bytes: number) {
@@ -50,6 +51,22 @@ const MOCK_RECORDS: Record<string, DbRecord[]> = {
   ],
   uav: [
     { uploadId: 2, fileName: 'uav_flight_20260401.csv', dataCategory: 'uav', dataType: 'sensor', fileSize: 12582912, uploadStatus: 'completed', createdAt: '2026-04-01T08:15:00', username: 'partner01' },
+  ],
+  naqo: [
+    { uploadId: 101, fileName: 'NAQO_20260401_08.json', dataCategory: 'naqo', dataType: 'hourly_obs', fileSize: 4096, uploadStatus: 'completed', createdAt: '2026-04-01T08:05:00', username: 'sftp' },
+    { uploadId: 102, fileName: 'NAQO_20260401_07.json', dataCategory: 'naqo', dataType: 'hourly_obs', fileSize: 4096, uploadStatus: 'completed', createdAt: '2026-04-01T07:05:00', username: 'sftp' },
+    { uploadId: 103, fileName: 'NAQO_20260401_06.json', dataCategory: 'naqo', dataType: 'hourly_obs', fileSize: 4096, uploadStatus: 'failed', createdAt: '2026-04-01T06:05:00', username: 'sftp' },
+    { uploadId: 104, fileName: 'NAQO_20260401_05.json', dataCategory: 'naqo', dataType: 'hourly_obs', fileSize: 4096, uploadStatus: 'completed', createdAt: '2026-04-01T05:05:00', username: 'sftp' },
+  ],
+  windlidar: [
+    { uploadId: 201, fileName: 'WindLidar_20260401_08.csv', dataCategory: 'windlidar', dataType: 'hourly_obs', fileSize: 8192, uploadStatus: 'completed', createdAt: '2026-04-01T08:03:00', username: 'sftp' },
+    { uploadId: 202, fileName: 'WindLidar_20260401_07.csv', dataCategory: 'windlidar', dataType: 'hourly_obs', fileSize: 8192, uploadStatus: 'completed', createdAt: '2026-04-01T07:03:00', username: 'sftp' },
+    { uploadId: 203, fileName: 'WindLidar_20260401_06.csv', dataCategory: 'windlidar', dataType: 'hourly_obs', fileSize: 8192, uploadStatus: 'completed', createdAt: '2026-04-01T06:03:00', username: 'sftp' },
+  ],
+  mpl: [
+    { uploadId: 301, fileName: 'MPL_20260401_08.csv', dataCategory: 'mpl', dataType: 'hourly_obs', fileSize: 6144, uploadStatus: 'completed', createdAt: '2026-04-01T08:04:00', username: 'sftp' },
+    { uploadId: 302, fileName: 'MPL_20260401_07.csv', dataCategory: 'mpl', dataType: 'hourly_obs', fileSize: 6144, uploadStatus: 'processing', createdAt: '2026-04-01T07:04:00', username: 'sftp' },
+    { uploadId: 303, fileName: 'MPL_20260401_06.csv', dataCategory: 'mpl', dataType: 'hourly_obs', fileSize: 6144, uploadStatus: 'completed', createdAt: '2026-04-01T06:04:00', username: 'sftp' },
   ],
 };
 
@@ -96,7 +113,14 @@ export default function SourceDatabase() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const categoryLabel = category === 'lidar' ? '光達系統 LiDAR' : '無人機資料系統';
+  const isSftp = ['naqo', 'windlidar', 'mpl'].includes(category ?? '');
+  const categoryLabel = {
+    lidar: '光達系統 LiDAR',
+    uav: '無人機資料系統',
+    naqo: 'NAQO 中大空品站',
+    windlidar: 'WindLidar 風廓線光達',
+    mpl: 'MPL 微脈衝光達',
+  }[category ?? ''] ?? category;
 
   const fetchAll = useCallback(async () => {
     if (!category) return;
@@ -318,7 +342,7 @@ export default function SourceDatabase() {
                       className="custom-checkbox"
                     />
                   </th>
-                  {['檔案名稱', '資料類型', '檔案大小', '上傳者', '上傳時間', '狀態'].map(h => (
+                  {['檔案名稱', '資料類型', '檔案大小', isSftp ? '來源' : '上傳者', '上傳時間', '狀態'].map(h => (
                     <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, color: '#999', fontWeight: 600 }}>{h}</th>
                   ))}
                 </tr>
