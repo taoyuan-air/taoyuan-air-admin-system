@@ -18,7 +18,7 @@ export interface User {
 export interface DataSource {
   sourceId: string;
   sourceName: string;
-  sourceType: 'EPA' | 'CWA' | 'IoT' | 'Lidar' | 'UAV' | 'WindProfiler';
+  sourceType: 'EPA' | 'CWA' | 'IoT' | 'UAV' | 'WindProfiler' | 'SFTP';
   apiEndpoint: string;
   updateFrequency: number;
   isActive: boolean;
@@ -44,7 +44,7 @@ export interface UploadRecord {
   uploadId: number;
   fileName: string;
   fileSize: number;
-  fileType: 'lidar' | 'uav' | 'other';
+  fileType: 'uav' | 'other';
   dataType: string;
   uploadStatus: 'uploading' | 'completed' | 'failed' | 'processing';
   validationStatus: 'pending' | 'valid' | 'invalid';

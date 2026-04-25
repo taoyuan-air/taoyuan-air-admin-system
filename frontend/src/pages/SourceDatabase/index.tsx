@@ -23,7 +23,6 @@ interface DbRecord {
 }
 
 const DATA_TYPE_LABELS: Record<string, string> = {
-  point_cloud: '點雲資料', wind_field: '風場資料', boundary_layer: '大氣邊界層',
   sensor: '感測器資料', flight_path: '飛行軌跡', imagery: '影像資料', meteorological: '氣象資料',
   hourly_obs: '逐時觀測',
 };
@@ -44,11 +43,6 @@ function formatTime(value: string) {
 }
 
 const MOCK_RECORDS: Record<string, DbRecord[]> = {
-  lidar: [
-    { uploadId: 1, fileName: 'lidar_20260401_001.las', dataCategory: 'lidar', dataType: 'point_cloud', fileSize: 256901120, uploadStatus: 'completed', createdAt: '2026-04-01T08:32:00', username: 'admin' },
-    { uploadId: 3, fileName: 'wind_field_20260401.nc', dataCategory: 'lidar', dataType: 'wind_field', fileSize: 92274688, uploadStatus: 'completed', createdAt: '2026-04-01T07:50:00', username: 'admin' },
-    { uploadId: 4, fileName: 'boundary_layer.json', dataCategory: 'lidar', dataType: 'boundary_layer', fileSize: 5242880, uploadStatus: 'failed', createdAt: '2026-04-01T07:20:00', username: 'manager' },
-  ],
   uav: [
     { uploadId: 2, fileName: 'uav_flight_20260401.csv', dataCategory: 'uav', dataType: 'sensor', fileSize: 12582912, uploadStatus: 'completed', createdAt: '2026-04-01T08:15:00', username: 'partner01' },
   ],
@@ -115,7 +109,6 @@ export default function SourceDatabase() {
 
   const isSftp = ['naqo', 'windlidar', 'mpl'].includes(category ?? '');
   const categoryLabel = {
-    lidar: '光達系統 LiDAR',
     uav: '無人機資料系統',
     naqo: 'NAQO 中大空品站',
     windlidar: 'WindLidar 風廓線光達',
@@ -216,7 +209,7 @@ export default function SourceDatabase() {
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [40, 16, 12, 14, 18, 10].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, category === 'lidar' ? '光達資料' : '無人機資料');
+    XLSX.utils.book_append_sheet(wb, ws, categoryLabel ?? category ?? '資料');
     const ts = new Intl.DateTimeFormat('sv-SE', {
       timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
@@ -254,7 +247,7 @@ export default function SourceDatabase() {
         {/* 工具列 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: selectedIds.size > 0 ? 12 : 20, flexWrap: 'wrap' }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, color: '#374151', margin: 0 }}>
-            {category === 'lidar' ? '光達' : '無人機'}上傳記錄
+            {categoryLabel} 上傳記錄
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative' }}>
