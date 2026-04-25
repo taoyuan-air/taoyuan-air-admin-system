@@ -11,8 +11,6 @@ import {
   CloudUpload,
   FileText,
   Package,
-  Wind,
-  Plane,
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
@@ -33,8 +31,7 @@ import { uploadService } from "../../services/uploadService";
 import { useUploadProgress } from "../../hooks/useUploadProgress";
 import { isDemoMode } from "../../config/api";
 
-type DataCategory = "lidar" | "uav";
-type LidarSubType = "point_cloud" | "wind_field" | "boundary_layer";
+type DataCategory = "uav";
 type UAVSubType = "sensor" | "flight_path" | "imagery" | "meteorological";
 
 const MB = 1024 * 1024;
@@ -46,30 +43,6 @@ interface SubTypeConfig {
   allowedExts: string[];
   maxSizeBytes: number;
 }
-
-const lidarConfig: Record<LidarSubType, SubTypeConfig> = {
-  point_cloud: {
-    label: "點雲資料",
-    formats: ".las, .laz, .ply, .pcd, .xyz",
-    maxSize: "500 MB",
-    allowedExts: [".las", ".laz", ".ply", ".pcd", ".xyz"],
-    maxSizeBytes: 500 * MB,
-  },
-  wind_field: {
-    label: "風場資料",
-    formats: ".nc, .hdf5, .csv, .json",
-    maxSize: "100 MB",
-    allowedExts: [".nc", ".hdf5", ".csv", ".json"],
-    maxSizeBytes: 100 * MB,
-  },
-  boundary_layer: {
-    label: "大氣邊界層",
-    formats: ".nc, .csv, .json",
-    maxSize: "50 MB",
-    allowedExts: [".nc", ".csv", ".json"],
-    maxSizeBytes: 50 * MB,
-  },
-};
 
 const uavConfig: Record<UAVSubType, SubTypeConfig> = {
   sensor: {
@@ -103,9 +76,6 @@ const uavConfig: Record<UAVSubType, SubTypeConfig> = {
 };
 
 const DATA_TYPE_LABELS: Record<string, string> = {
-  point_cloud: "點雲資料",
-  wind_field: "風場資料",
-  boundary_layer: "大氣邊界層",
   sensor: "感測器資料",
   flight_path: "飛行軌跡",
   imagery: "影像資料",
@@ -155,14 +125,7 @@ function getHistoryDataTypeLabel(
   dataCategory: string,
   dataType: string,
 ): string {
-  return (
-    DATA_TYPE_LABELS[dataType] ??
-    (dataCategory === "lidar"
-      ? "光達資料"
-      : dataCategory === "uav"
-        ? "無人機資料"
-        : dataType)
-  );
+  return DATA_TYPE_LABELS[dataType] ?? (dataCategory === "uav" ? "無人機資料" : dataType);
 }
 
 interface StagedFile {
@@ -266,10 +229,10 @@ const historySearchInputStyle = {
 export default function Upload() {
   const { uploadHistory: history, setUploadHistory: setHistory } = useAppData();
   const { token, user } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [category, setCategory] = useState<DataCategory | null>(null);
-  const [lidarType, setLidarType] = useState<LidarSubType>("point_cloud");
-  const [uavType, setUavType] = useState<UAVSubType>("sensor");
+  const [step, setStep] = useState<2 | 3 | 4>(2);
+  const [category] = useState<DataCategory>("uav");
+  const [uavType, setUavType] = useState<UAVSubType | null>(null);
+  const [hoveredType, setHoveredType] = useState<UAVSubType | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -297,17 +260,9 @@ export default function Upload() {
   const finishedCountRef = useRef(0);
   const totalCountRef = useRef(0);
 
-  const [hoveredCategory, setHoveredCategory] = useState<DataCategory | null>(
-    null,
-  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const currentConfig =
-    category === "lidar"
-      ? lidarConfig[lidarType]
-      : category === "uav"
-        ? uavConfig[uavType]
-        : null;
+  const currentConfig = uavType ? uavConfig[uavType] : null;
 
   const currentConfigRef = useRef(currentConfig);
 
@@ -487,7 +442,7 @@ export default function Upload() {
 
   // Submit real upload request, then track progress from backend SSE
   const startUpload = async () => {
-    if (stagedFiles.length === 0 || isUploading || !category) return;
+    if (stagedFiles.length === 0 || isUploading) return;
     const authToken = token ?? "";
     if (!isDemoMode && !authToken) {
       setUploadError("尚未登入，請先重新登入後再上傳。");
@@ -577,7 +532,7 @@ export default function Upload() {
       return;
     }
 
-    const dataType = category === "lidar" ? lidarType : uavType;
+    const dataType = uavType ?? "sensor";
 
     try {
       const response = await uploadService.uploadFiles(
@@ -636,9 +591,8 @@ export default function Upload() {
     setUploadingFiles([]);
     setValidationErrors([]);
     setIsUploading(false);
-    setStep(1);
-    setCategory(null);
-    setActiveUploadIds([]);
+    setStep(2);
+    setUavType(null);
     setUploadError(null);
     uploadIdMapRef.current.clear();
     finishedCountRef.current = 0;
@@ -821,218 +775,64 @@ export default function Upload() {
             filteredHistory.length,
           );
 
-  // Step labels for stepper
+  // Step labels for stepper — 3 steps (skip category selection)
   const steps: [string, string][] = [
-    ["1", "選擇類型"],
-    ["2", "選擇子類型"],
-    ["3", "上傳檔案"],
-    ["4", "上傳結果"],
+    ["1", "選擇子類型"],
+    ["2", "上傳檔案"],
+    ["3", "上傳結果"],
   ];
+  // internal step: 2=subtype, 3=upload, 4=result → display as 1,2,3
+  const displayStep = step === 2 ? 1 : step === 3 ? 2 : 3;
 
   return (
     <div>
-      <Header title="資料上傳" subtitle="光達與無人機資料上傳管理" />
+      <Header title="資料上傳" subtitle="無人機資料上傳管理" />
 
       {/* Stepper */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 0,
-          marginBottom: 24,
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 24 }}>
         {steps.map(([n, label], i) => {
           const num = Number(n);
-          const done = step > num;
-          const active = step === num;
+          const done = displayStep > num;
+          const active = displayStep === num;
           return (
             <div key={n} style={{ display: "flex", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    backgroundColor: done || active ? "#6abe74" : "#e5e7eb",
-                    color: done || active ? "#fff" : "#9ca3af",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 13,
-                    fontWeight: 700,
-                  }}
-                >
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%",
+                  backgroundColor: done || active ? "#6abe74" : "#e5e7eb",
+                  color: done || active ? "#fff" : "#9ca3af",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, fontWeight: 700,
+                }}>
                   {done ? "✓" : n}
                 </div>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 400,
-                    color: active ? "#374151" : "#9ca3af",
-                  }}
-                >
+                <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? "#374151" : "#9ca3af" }}>
                   {label}
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <div
-                  style={{
-                    width: 40,
-                    height: 2,
-                    backgroundColor: step > num ? "#6abe74" : "#e5e7eb",
-                    margin: "0 12px",
-                  }}
-                />
+                <div style={{ width: 40, height: 2, backgroundColor: displayStep > num ? "#6abe74" : "#e5e7eb", margin: "0 12px" }} />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* ── Step 1: 選擇大類 ── */}
-      {step === 1 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 16,
-            marginBottom: 20,
-          }}
-        >
-          {(
-            [
-              [
-                "lidar",
-                "光達資料",
-                "LiDAR",
-                "點雲、風場、大氣邊界層等光達量測資料",
-              ],
-              [
-                "uav",
-                "無人機資料",
-                "UAV",
-                "感測器、飛行軌跡、影像、氣象等無人機資料",
-              ],
-            ] as [DataCategory, string, string, string][]
-          ).map(([val, title, eng, desc]) => (
-            <div
-              key={val}
-              onClick={() => {
-                setCategory(val);
-                setStep(2);
-              }}
-              onMouseEnter={() => setHoveredCategory(val)}
-              onMouseLeave={() => setHoveredCategory(null)}
-              style={{
-                padding: "32px 28px",
-                borderRadius: 16,
-                cursor: "pointer",
-                border: `2px solid ${category === val || hoveredCategory === val ? "#6abe74" : "rgba(106,190,116,0.25)"}`,
-                backgroundColor:
-                  category === val
-                    ? "rgba(106,190,116,0.08)"
-                    : hoveredCategory === val
-                      ? "rgba(106,190,116,0.05)"
-                      : "#fff",
-                transition: "all 0.15s",
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-                transform:
-                  hoveredCategory === val ? "translateY(-2px)" : "none",
-                boxShadow:
-                  hoveredCategory === val
-                    ? "0 6px 20px rgba(106,190,116,0.15)"
-                    : "none",
-              }}
-            >
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  backgroundColor: "rgba(106,190,116,0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {val === "lidar" ? (
-                  <Wind size={24} color="#6abe74" />
-                ) : (
-                  <Plane size={24} color="#6abe74" />
-                )}
-              </div>
-              <div>
-                <div
-                  style={{ fontSize: 17, fontWeight: 700, color: "#374151" }}
-                >
-                  {title}
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#6abe74",
-                    fontWeight: 600,
-                    marginBottom: 6,
-                  }}
-                >
-                  {eng}
-                </div>
-                <div
-                  style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6 }}
-                >
-                  {desc}
-                </div>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  color: "#6abe74",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  marginTop: 4,
-                }}
-              >
-                選擇 <ChevronRight size={15} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── Step 2: 選擇子類型 ── */}
-      {step === 2 && category && (
+      {step === 2 && (
         <Card style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: "#374151",
-              marginBottom: 16,
-            }}
-          >
-            選擇{category === "lidar" ? "光達" : "無人機"}資料子類型
+          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 16 }}>
+            選擇無人機資料子類型
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {(category === "lidar"
-              ? (Object.entries(lidarConfig) as [
-                  LidarSubType,
-                  (typeof lidarConfig)[LidarSubType],
-                ][])
-              : (Object.entries(uavConfig) as [
-                  UAVSubType,
-                  (typeof uavConfig)[UAVSubType],
-                ][])
-            ).map(([key, cfg]) => {
-              const selected =
-                category === "lidar" ? lidarType === key : uavType === key;
+            {(Object.entries(uavConfig) as [UAVSubType, (typeof uavConfig)[UAVSubType]][]).map(([key, cfg]) => {
+              const selected = uavType === key;
+              const hovered = hoveredType === key;
               return (
                 <label
                   key={key}
+                  onMouseEnter={() => setHoveredType(key)}
+                  onMouseLeave={() => setHoveredType(null)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1040,10 +840,16 @@ export default function Upload() {
                     padding: "14px 16px",
                     borderRadius: 12,
                     cursor: "pointer",
-                    border: `1.5px solid ${selected ? "#6abe74" : "rgba(106,190,116,0.2)"}`,
+                    border: `1.5px solid ${
+                      selected ? "#6abe74" : hovered ? "rgba(106,190,116,0.5)" : "rgba(106,190,116,0.2)"
+                    }`,
                     backgroundColor: selected
-                      ? "rgba(106,190,116,0.07)"
-                      : "#fff",
+                      ? "rgba(106,190,116,0.09)"
+                      : hovered
+                        ? "rgba(106,190,116,0.04)"
+                        : "#fff",
+                    boxShadow: hovered && !selected ? "0 2px 8px rgba(106,190,116,0.12)" : "none",
+                    transform: hovered && !selected ? "translateY(-1px)" : "none",
                     transition: "all 0.15s",
                   }}
                 >
@@ -1052,78 +858,27 @@ export default function Upload() {
                     name="subtype"
                     value={key}
                     checked={selected}
-                    onChange={() =>
-                      category === "lidar"
-                        ? setLidarType(key as LidarSubType)
-                        : setUavType(key as UAVSubType)
-                    }
-                    style={{
-                      position: "absolute",
-                      opacity: 0,
-                      width: 0,
-                      height: 0,
-                    }}
+                    onChange={() => setUavType(key as UAVSubType)}
+                    style={{ position: "absolute", opacity: 0, width: 0, height: 0 }}
                   />
-                  <div
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: "50%",
-                      flexShrink: 0,
-                      border: `2px solid ${selected ? "#6abe74" : "#d1d5db"}`,
-                      backgroundColor: selected ? "#6abe74" : "#fff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {selected && (
-                      <div
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: "50%",
-                          backgroundColor: "#fff",
-                        }}
-                      />
-                    )}
+                  <div style={{
+                    width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
+                    border: `2px solid ${selected ? "#6abe74" : hovered ? "rgba(106,190,116,0.6)" : "#d1d5db"}`,
+                    backgroundColor: selected ? "#6abe74" : "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 0.15s",
+                  }}>
+                    {selected && <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#fff" }} />}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "#374151",
-                      }}
-                    >
+                    <div style={{ fontSize: 14, fontWeight: 600, color: selected ? "#2d6a4f" : "#374151" }}>
                       {cfg.label}
                     </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#9ca3af",
-                        marginTop: 2,
-                        display: "flex",
-                        gap: 16,
-                      }}
-                    >
-                      <span
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
+                    <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2, display: "flex", gap: 16 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <FileText size={11} /> {cfg.formats}
                       </span>
-                      <span
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <Package size={11} /> 最大 {cfg.maxSize}
                       </span>
                     </div>
@@ -1132,44 +887,17 @@ export default function Upload() {
               );
             })}
           </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 20,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
             <button
-              onClick={() => setStep(1)}
+              onClick={() => { if (uavType) setStep(3); }}
+              disabled={!uavType}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 16px",
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                backgroundColor: "transparent",
-                fontSize: 13,
-                color: "#6b7280",
-                cursor: "pointer",
-              }}
-            >
-              <ChevronLeft size={15} /> 上一步
-            </button>
-            <button
-              onClick={() => setStep(3)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 20px",
-                borderRadius: 8,
-                border: "none",
-                backgroundColor: "#6abe74",
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "8px 20px", borderRadius: 8, border: "none",
+                backgroundColor: uavType ? "#6abe74" : "#d1d5db",
+                color: "#fff", fontSize: 13, fontWeight: 600,
+                cursor: uavType ? "pointer" : "not-allowed",
+                transition: "background-color 0.15s",
               }}
             >
               下一步 <ChevronRight size={15} />
@@ -1179,7 +907,7 @@ export default function Upload() {
       )}
 
       {/* ── Step 3: 選擇檔案（手動確認才上傳） ── */}
-      {step === 3 && currentConfig && (
+      {step === 3 && (
         <Card style={{ marginBottom: 20 }}>
           {/* 已選摘要 */}
           <div
@@ -1197,22 +925,21 @@ export default function Upload() {
             }}
           >
             <span style={{ fontWeight: 600, color: "#374151" }}>
-              {category === "lidar" ? "光達資料" : "無人機資料"} ›{" "}
-              {currentConfig.label}
+              無人機資料 › {currentConfig?.label ?? '請先選擇子類型'}
             </span>
             <span>·</span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <FileText size={11} />
-              {currentConfig.formats}
+              {currentConfig?.formats ?? '—'}
             </span>
             <span>·</span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <Package size={11} />
-              最大 {currentConfig.maxSize}
+              最大 {currentConfig?.maxSize ?? '—'}
             </span>
             {!isUploading && (
               <button
-                onClick={() => setStep(2)}
+                onClick={() => { setUavType(null); setStep(2); }}
                 style={{
                   marginLeft: "auto",
                   fontSize: 11,
@@ -1727,6 +1454,7 @@ export default function Upload() {
               <button
                 onClick={() => {
                   setStagedFiles([]);
+                  setUavType(null);
                   setStep(2);
                 }}
                 style={{
