@@ -42,9 +42,6 @@ function formatSize(bytes: number): string {
 }
 
 const DATA_TYPE_LABELS: Record<string, string> = {
-  point_cloud: "點雲資料",
-  wind_field: "風場資料",
-  boundary_layer: "大氣邊界層",
   sensor: "感測器資料",
   flight_path: "飛行軌跡",
   imagery: "影像資料",
@@ -52,14 +49,7 @@ const DATA_TYPE_LABELS: Record<string, string> = {
 };
 
 function getTypeLabel(category: string, dataType: string): string {
-  return (
-    DATA_TYPE_LABELS[dataType] ??
-    (category === "lidar"
-      ? "光達資料"
-      : category === "uav"
-        ? "無人機資料"
-        : dataType)
-  );
+  return DATA_TYPE_LABELS[dataType] ?? (category === "uav" ? "無人機資料" : dataType);
 }
 
 function repairMojibake(value: string): string {

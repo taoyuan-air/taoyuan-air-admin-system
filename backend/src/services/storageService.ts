@@ -4,9 +4,8 @@ import type { DataCategory, DataType } from '../shared/types/upload';
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
 
-const ALLOWED_CATEGORIES = new Set(['lidar', 'uav']);
+const ALLOWED_CATEGORIES = new Set(['uav']);
 const ALLOWED_TYPES = new Set([
-  'point_cloud', 'wind_field', 'boundary_layer',
   'sensor', 'flight_path', 'imagery', 'meteorological',
 ]);
 

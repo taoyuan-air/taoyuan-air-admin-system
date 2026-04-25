@@ -56,7 +56,7 @@ const mockSftpLogs: Record<string, { time: string; fileName: string; dataTime: s
   ],
 };
 
-const SOURCE_TYPES = ['EPA', 'CWA', 'IoT', 'Lidar', 'UAV', 'WindProfiler', 'SFTP'] as const;
+const SOURCE_TYPES = ['EPA', 'CWA', 'IoT', 'UAV', 'WindProfiler', 'SFTP'] as const;
 const sourceTypeOptions = SOURCE_TYPES.map(t => ({ value: t, label: t }));
 
 const selectStyles = {
@@ -204,7 +204,7 @@ export default function DataSources() {
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              {(src.type === 'Lidar' || src.type === 'UAV' || src.type === 'SFTP') && (
+              {(src.type === 'UAV' || src.type === 'SFTP') && (
                 <button onClick={() => {
                   const catMap: Record<string, string> = { '6': 'naqo', '7': 'windlidar', '8': 'mpl' };
                   const cat = catMap[src.id] ?? src.type.toLowerCase();
