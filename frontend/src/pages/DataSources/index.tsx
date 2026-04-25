@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isDemoMode, apiUrl } from '../../config/api';
 import { RefreshCw, Clock, Plug, Settings, ScrollText, X, CheckCircle, XCircle, AlertCircle, Database, ServerCog } from 'lucide-react';
 import Select from 'react-select';
 import Card from '../../components/Card';
@@ -107,6 +108,39 @@ export default function DataSources() {
   const [errors, setErrors]         = useState<Partial<typeof emptyForm>>({});
   const [logSrc, setLogSrc]         = useState<SourceRecord | null>(null);
   const [sftpLogSrc, setSftpLogSrc] = useState<SourceRecord | null>(null);
+  const [sftpLogs, setSftpLogs]     = useState<typeof mockSftpLogs[string]>([]);
+  const [sftpLoading, setSftpLoading] = useState(false);
+
+  useEffect(() => {
+    if (!sftpLogSrc) return;
+    if (isDemoMode) {
+      setSftpLogs(mockSftpLogs[sftpLogSrc.id] ?? []);
+      return;
+    }
+    const sourceMap: Record<string, string> = { '6': 'NAQO', '7': 'WindLidar', '8': 'MPL' };
+    const source = sourceMap[sftpLogSrc.id];
+    if (!source) { setSftpLogs([]); return; }
+    setSftpLoading(true);
+    const token = sessionStorage.getItem('auth_token');
+    fetch(apiUrl(`/api/sftp/logs?source=${source}&limit=50`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => setSftpLogs(
+        (data.logs ?? []).map((l: {
+          file_name: string; data_time: string | null;
+          status: string; received_at: string; error_msg: string | null;
+        }) => ({
+          fileName: l.file_name,
+          dataTime: l.data_time ? new Date(l.data_time).toLocaleString('zh-TW') : '—',
+          status: l.status as 'parsed' | 'failed' | 'received',
+          time: new Date(l.received_at).toLocaleString('zh-TW'),
+          errorMsg: l.error_msg ?? undefined,
+        }))
+      ))
+      .catch(() => setSftpLogs([]))
+      .finally(() => setSftpLoading(false));
+  }, [sftpLogSrc]);
 
   const isEditing = editingSrc !== null;
 
@@ -278,11 +312,12 @@ export default function DataSources() {
           <div style={{
             backgroundColor: '#F4F2E9', borderRadius: 20, padding: 28,
             width: 'min(480px, calc(100vw - 32px))',
-            maxHeight: 'calc(100vh - 40px)', overflowY: 'auto',
+            maxHeight: 'calc(100vh - 40px)',
+            display: 'flex', flexDirection: 'column',
             boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           }} onClick={e => e.stopPropagation()}>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexShrink: 0 }}>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151' }}>
                 {isEditing ? '編輯資料來源' : '新增資料來源'}
               </h2>
@@ -357,11 +392,13 @@ export default function DataSources() {
           <div style={{
             backgroundColor: '#F4F2E9', borderRadius: 20, padding: 28,
             width: 'min(520px, calc(100vw - 32px))',
-            maxHeight: 'calc(100vh - 40px)', overflowY: 'auto',
+            maxHeight: 'calc(100vh - 40px)',
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden',
             boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           }} onClick={e => e.stopPropagation()}>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexShrink: 0 }}>
               <div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 2 }}>同步日誌</h2>
                 <div style={{ fontSize: 12, color: '#999' }}>{logSrc.name}</div>
@@ -371,7 +408,7 @@ export default function DataSources() {
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(mockLogs[logSrc.id] ?? []).length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0', color: '#999', fontSize: 13 }}>尚無同步記錄</div>
               ) : (mockLogs[logSrc.id] ?? []).map((log, i) => (
@@ -407,14 +444,16 @@ export default function DataSources() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }} onClick={() => setSftpLogSrc(null)}>
           <div style={{
-            backgroundColor: '#F4F2E9', borderRadius: 20, padding: 28,
-            width: 'min(600px, calc(100vw - 32px))',
-            maxHeight: 'calc(100vh - 40px)', overflowY: 'auto',
+            backgroundColor: '#F4F2E9', borderRadius: 20, padding: '28px 32px',
+            width: 'min(900px, calc(100vw - 48px))',
+            maxHeight: 'calc(100vh - 48px)',
+            display: 'flex', flexDirection: 'column',
+            overflow: 'hidden',
             boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexShrink: 0 }}>
               <div>
-                <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 2 }}>SFTP 傳輸記錄</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 2 }}>傳輸記錄</h2>
                 <div style={{ fontSize: 12, color: '#999' }}>{sftpLogSrc.name}</div>
               </div>
               <button onClick={() => setSftpLogSrc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}>
@@ -422,39 +461,50 @@ export default function DataSources() {
               </button>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <div style={{ overflowY: 'auto', overflowX: 'auto', flex: 1 }}>
+              {sftpLoading ? (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: '#999', fontSize: 13 }}>載入中...</div>
+              ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                    {['檔案名稱', '資料時間', '狀態', '接收時間', '錯誤訊息'].map(h => (
-                      <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: '#999', fontWeight: 600 }}>{h}</th>
+                    {[
+                      { label: '檔案名稱', width: '36%' },
+                      { label: '資料時間', width: '10%' },
+                      { label: '狀態',     width: '10%' },
+                      { label: '接收時間', width: '24%' },
+                      { label: '錯誤訊息', width: '20%' },
+                    ].map(h => (
+                      <th key={h.label} style={{ padding: '10px 14px', textAlign: 'left', color: '#999', fontWeight: 600, width: h.width }}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {(mockSftpLogs[sftpLogSrc.id] ?? []).length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: '#999' }}>尚無傳輸記錄</td></tr>
-                  ) : (mockSftpLogs[sftpLogSrc.id] ?? []).map((log, i) => {
+                  {sftpLogs.length === 0 ? (
+                    <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#999' }}>尚無傳輸記錄</td></tr>
+                  ) : sftpLogs.map((log, i) => {
                     const statusColor = log.status === 'parsed' ? '#6abe74' : log.status === 'failed' ? '#e57373' : '#f0a500';
                     const statusLabel = log.status === 'parsed' ? '已解析' : log.status === 'failed' ? '失敗' : '已接收';
                     return (
-                      <tr key={i} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        <td style={{ padding: '10px', color: '#374151', fontFamily: 'monospace', fontSize: 11 }}>{log.fileName}</td>
-                        <td style={{ padding: '10px', color: '#666' }}>{log.dataTime}</td>
-                        <td style={{ padding: '10px' }}>
+                      <tr key={i} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                        <td style={{ padding: '12px 14px', color: '#374151', fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>{log.fileName}</td>
+                        <td style={{ padding: '12px 14px', color: '#555' }}>{log.dataTime}</td>
+                        <td style={{ padding: '12px 14px' }}>
                           <span style={{
-                            fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                            fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
                             color: statusColor,
                             backgroundColor: log.status === 'parsed' ? 'rgba(106,190,116,0.12)' : log.status === 'failed' ? 'rgba(229,115,115,0.12)' : 'rgba(240,165,0,0.12)',
+                            whiteSpace: 'nowrap',
                           }}>{statusLabel}</span>
                         </td>
-                        <td style={{ padding: '10px', color: '#666' }}>{log.time}</td>
-                        <td style={{ padding: '10px', color: '#e57373', fontSize: 11 }}>{log.errorMsg ?? '—'}</td>
+                        <td style={{ padding: '12px 14px', color: '#555' }}>{log.time}</td>
+                        <td style={{ padding: '12px 14px', color: '#e57373', fontSize: 12 }}>{log.errorMsg ?? '—'}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
         </div>
