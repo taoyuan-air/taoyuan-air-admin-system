@@ -123,7 +123,11 @@ export default function SourceDatabase() {
     }
     setLoading(true);
     try {
-      const res = await fetch(apiUrl(`/api/uploads/by-category/${category}?page=1&limit=9999`), {
+      const isSftpCategory = ['naqo', 'windlidar', 'mpl'].includes(category);
+      const url = isSftpCategory
+        ? apiUrl(`/api/sftp/records/${category}?page=1&limit=9999`)
+        : apiUrl(`/api/uploads/by-category/${category}?page=1&limit=9999`);
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -219,7 +223,9 @@ export default function SourceDatabase() {
   };
 
   const statusToBadge = (s: string): 'completed' | 'processing' | 'failed' =>
-    s === 'completed' ? 'completed' : s === 'failed' ? 'failed' : 'processing';
+    s === 'completed' || s === 'parsed' ? 'completed'
+    : s === 'failed' ? 'failed'
+    : 'processing';
 
   return (
     <div>
