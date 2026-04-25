@@ -264,9 +264,11 @@ router.delete(
       return;
     }
 
-    const isAdmin =
-      user.roleCode === "super_admin" || user.roleCode === "system_admin";
-    if (!isAdmin && record.userId !== user.userId) {
+    const canDelete =
+      user.roleCode === "system_admin" ||
+      user.roleCode === "data_manager" ||
+      record.userId === user.userId;
+    if (!canDelete) {
       res
         .status(403)
         .json({ error: ErrorCode.FORBIDDEN, message: "無刪除此資料的權限" });
@@ -321,16 +323,12 @@ router.delete(
   },
 );
 
-// GET /api/uploads/by-category/:category  (category = 'lidar' | 'uav')
+// GET /api/uploads/by-category/:category
 router.get(
   "/by-category/:category",
   authenticateJWT,
   async (req: Request, res: Response): Promise<void> => {
-    const category = req.params.category as DataCategory;
-    if (category !== "lidar" && category !== "uav") {
-      res.status(400).json({ message: "category 必須為 lidar 或 uav" });
-      return;
-    }
+    const category = req.params.category;
     const page  = req.query.page  ? parseInt(req.query.page  as string, 10) : 1;
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
     const result = await FileUploadRepository.findAll({ dataCategory: category, page, limit });
@@ -344,8 +342,7 @@ router.get(
   authenticateJWT,
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user!;
-    const isAdmin =
-      user.roleCode === "super_admin" || user.roleCode === "system_admin";
+    const isAdmin = user.roleCode === "system_admin";
 
     const filter = {
       userId:

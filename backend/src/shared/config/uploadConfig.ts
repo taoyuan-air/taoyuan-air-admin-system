@@ -1,18 +1,4 @@
 export const UPLOAD_CONFIG = {
-  lidar: {
-    point_cloud: {
-      formats: ['.las', '.laz', '.ply', '.pcd', '.xyz'],
-      maxSizeMB: 500,
-    },
-    wind_field: {
-      formats: ['.nc', '.hdf5', '.csv', '.json'],
-      maxSizeMB: 100,
-    },
-    boundary_layer: {
-      formats: ['.nc', '.csv', '.json'],
-      maxSizeMB: 50,
-    },
-  },
   uav: {
     sensor: {
       formats: ['.csv', '.json', '.xml', '.txt'],

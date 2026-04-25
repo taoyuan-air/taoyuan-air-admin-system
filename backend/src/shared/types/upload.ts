@@ -1,8 +1,7 @@
-export type DataCategory = 'lidar' | 'uav';
+export type DataCategory = 'uav';
 
-export type LidarDataType = 'point_cloud' | 'wind_field' | 'boundary_layer';
 export type UAVDataType = 'sensor' | 'flight_path' | 'imagery' | 'meteorological';
-export type DataType = LidarDataType | UAVDataType;
+export type DataType = UAVDataType;
 
 export type UploadStatus = 'uploading' | 'completed' | 'failed' | 'cancelled';
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
