@@ -43,7 +43,7 @@ export default function ChangePasswordPage() {
         setError(data.message ?? "修改失敗");
         return;
       }
-      clearMustChangePassword();
+      clearMustChangePassword((data as { token?: string }).token);
     } catch {
       setError("無法連線到後端 API");
     } finally {
