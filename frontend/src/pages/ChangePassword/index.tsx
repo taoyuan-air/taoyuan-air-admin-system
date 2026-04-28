@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Wind } from "lucide-react";
+import { Wind, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiUrl } from "../../config/api";
 
@@ -11,6 +11,9 @@ export default function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -106,22 +109,37 @@ export default function ChangePasswordPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {[
-            { label: "目前密碼", value: currentPassword, setter: setCurrentPassword },
-            { label: "新密碼", value: newPassword, setter: setNewPassword },
-            { label: "確認新密碼", value: confirmPassword, setter: setConfirmPassword },
-          ].map(({ label, value, setter }) => (
+          {([
+            { label: "目前密碼", value: currentPassword, setter: setCurrentPassword, show: showCurrent, toggle: () => setShowCurrent((v) => !v) },
+            { label: "新密碼", value: newPassword, setter: setNewPassword, show: showNew, toggle: () => setShowNew((v) => !v) },
+            { label: "確認新密碼", value: confirmPassword, setter: setConfirmPassword, show: showConfirm, toggle: () => setShowConfirm((v) => !v) },
+          ] as const).map(({ label, value, setter, show, toggle }) => (
             <div key={label} style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 13, color: "#374151", fontWeight: 500, display: "block", marginBottom: 6 }}>
                 {label}
               </label>
-              <input
-                type="password"
-                value={value}
-                onChange={(e) => setter(e.target.value)}
-                required
-                style={inputStyle}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={show ? "text" : "password"}
+                  value={value}
+                  onChange={(e) => setter(e.target.value)}
+                  required
+                  style={{ ...inputStyle, padding: "10px 40px 10px 12px" }}
+                />
+                <button
+                  type="button"
+                  onClick={toggle}
+                  tabIndex={-1}
+                  style={{
+                    position: "absolute", right: 10, top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "#9ca3af", display: "flex", alignItems: "center", padding: 0,
+                  }}
+                >
+                  {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
           ))}
 
