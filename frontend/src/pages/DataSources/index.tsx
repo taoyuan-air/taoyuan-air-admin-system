@@ -102,6 +102,24 @@ export default function DataSources() {
   const { sources, setSources } = useAppData();
   const navigate = useNavigate();
   const [testingId, setTestingId]   = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isDemoMode) return;
+    const token = sessionStorage.getItem('auth_token');
+    fetch(apiUrl('/api/sftp/last-sync'), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then((data: Record<string, string | null>) => {
+        // sourceId -> data key mapping
+        const idToKey: Record<string, string> = { '6': 'NAQO', '7': 'WindLidar', '8': 'MPL', '2': 'UAV' };
+        setSources(prev => prev.map(s => {
+          const key = idToKey[s.id];
+          return { ...s, lastSync: data[key] ? new Date(data[key]!).toLocaleString('zh-TW', { hour12: false }) : '—' };
+        }));
+      })
+      .catch(() => {});
+  }, []);
   const [showForm, setShowForm]     = useState(false);
   const [editingSrc, setEditingSrc] = useState<SourceRecord | null>(null);
   const [form, setForm]             = useState(emptyForm);
