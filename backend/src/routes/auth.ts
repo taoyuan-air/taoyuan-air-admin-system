@@ -94,7 +94,11 @@ router.post('/change-password', authenticateJWT, async (req: Request, res: Respo
     [hash, req.user!.userId],
   );
 
-  res.json({ success: true, message: '密碼修改成功' });
+  const { userId, username, roleCode, uploadQuotaGb } = req.user!;
+  const newPayload: JwtPayload = { userId, username, roleCode, uploadQuotaGb, mustChangePassword: false };
+  const newToken = jwt.sign(newPayload, process.env.JWT_SECRET!, { expiresIn: '8h' });
+
+  res.json({ success: true, message: '密碼修改成功', token: newToken });
 });
 
 export default router;
