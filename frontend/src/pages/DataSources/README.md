@@ -8,10 +8,30 @@
 
 | 方法 | 路徑                              | 權限   | 說明                              |
 | ---- | --------------------------------- | ------ | --------------------------------- |
+| GET  | `/api/sftp/last-sync`             | 需登入 | 取得各來源最後同步時間            |
 | GET  | `/api/sftp/logs`                  | 需登入 | 查詢 SFTP 傳輸記錄（同步日誌）    |
 | GET  | `/api/sftp/records/:source`       | 需登入 | 查詢 SFTP 來源的資料庫內容        |
 
 > 新增 / 編輯 / 刪除資料來源目前為前端狀態操作，尚未串接後端 CRUD API。
+
+### GET `/api/sftp/last-sync`
+
+無 query string。
+
+Response：
+
+```json
+{
+  "NAQO":      "2026-04-01T08:05:00.000Z",
+  "WindLidar": "2026-04-01T08:03:00.000Z",
+  "MPL":       "2026-04-01T08:04:00.000Z",
+  "UAV":       "2026-04-01T08:15:00.000Z"
+}
+```
+
+- 查詢來源：SFTP 類查 `sftp_transfer_logs.MAX(received_at)`，UAV 查 `file_uploads.MAX(created_at)`
+- 無資料時對應欄位回傳 `null`，前端顯示 `—`
+- Demo 模式下不呼叫此 API
 
 ### GET `/api/sftp/logs`
 
@@ -77,6 +97,12 @@ Response：
 ### 卡片資訊
 每張卡片顯示：名稱、類型標籤、API 端點、同步頻率（SFTP 顯示「逐時接收」）、最後同步時間、連線狀態、啟用狀態。
 
+**最後同步時間行為：**
+- 真實模式：頁面載入時呼叫 `/api/sftp/last-sync`，以資料庫實際時間覆蓋初始值（id 2/6/7/8）
+- API 回傳 `null` 或呼叫失敗：顯示 `—`
+- Demo 模式：一律顯示 `—`
+- EPA / CWA / IoT（id 3/4/5）：不從 API 取得，維持 `AppDataContext` 初始值
+
 ### 操作按鈕
 
 | 按鈕         | 適用類型         | 說明                                                                 |
@@ -119,10 +145,20 @@ interface SourceRecord {
 ## 資料庫查詢參考
 
 ```sql
+-- 各來源最後同步時間
+SELECT source, MAX(received_at) AS last_sync
+FROM sftp_transfer_logs
+GROUP BY source;
+
+-- UAV 最後上傳時間
+SELECT MAX(created_at) AS last_sync
+FROM file_uploads
+WHERE data_category = 'uav';
+
 -- SFTP 傳輸記錄（同步日誌）
 SELECT id, source, file_name, file_size, data_time, status, error_msg, received_at
 FROM sftp_transfer_logs
-WHERE source = 'NAQO'   -- 或 'WINDLIDAR' / 'MPL'
+WHERE source = 'NAQO'   -- 或 'WindLidar' / 'MPL'
 ORDER BY received_at DESC
 LIMIT 50;
 ```

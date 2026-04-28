@@ -56,4 +56,32 @@ router.get('/records/:source', authenticateJWT, async (req: Request, res: Respon
   });
 });
 
+// GET /api/sftp/last-sync — 各來源最後同步時間
+router.get('/last-sync', authenticateJWT, async (_req: Request, res: Response): Promise<void> => {
+  const [sftpResult, uavResult] = await Promise.all([
+    pool.query(
+      `SELECT source, MAX(received_at) AS last_sync
+       FROM sftp_transfer_logs
+       GROUP BY source`
+    ),
+    pool.query(
+      `SELECT MAX(created_at) AS last_sync FROM file_uploads WHERE data_category = 'uav'`
+    ),
+  ]);
+
+  const result: Record<string, string | null> = {
+    NAQO:      null,
+    WindLidar: null,
+    MPL:       null,
+    UAV:       null,
+  };
+
+  for (const row of sftpResult.rows) {
+    if (row.source in result) result[row.source] = row.last_sync;
+  }
+  result.UAV = uavResult.rows[0]?.last_sync ?? null;
+
+  res.json(result);
+});
+
 export default router;
