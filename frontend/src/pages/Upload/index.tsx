@@ -10,9 +10,6 @@ import type { StylesConfig } from "react-select";
 import {
   CloudUpload,
   FileText,
-  Package,
-  ChevronRight,
-  ChevronLeft,
   CheckCircle2,
   XCircle,
   UploadCloud,
@@ -31,56 +28,8 @@ import { uploadService } from "../../services/uploadService";
 import { useUploadProgress } from "../../hooks/useUploadProgress";
 import { isDemoMode } from "../../config/api";
 
-type DataCategory = "uav";
-type UAVSubType = "sensor" | "flight_path" | "imagery" | "meteorological";
-
-const MB = 1024 * 1024;
-
-interface SubTypeConfig {
-  label: string;
-  formats: string;
-  maxSize: string;
-  allowedExts: string[];
-  maxSizeBytes: number;
-}
-
-const uavConfig: Record<UAVSubType, SubTypeConfig> = {
-  sensor: {
-    label: "感測器資料",
-    formats: ".csv, .json, .xml, .txt",
-    maxSize: "100 MB",
-    allowedExts: [".csv", ".json", ".xml", ".txt"],
-    maxSizeBytes: 100 * MB,
-  },
-  flight_path: {
-    label: "飛行軌跡",
-    formats: ".kml, .gpx, .csv, .json",
-    maxSize: "10 MB",
-    allowedExts: [".kml", ".gpx", ".csv", ".json"],
-    maxSizeBytes: 10 * MB,
-  },
-  imagery: {
-    label: "影像資料",
-    formats: ".jpg, .png, .tiff, .raw",
-    maxSize: "200 MB",
-    allowedExts: [".jpg", ".jpeg", ".png", ".tiff", ".raw"],
-    maxSizeBytes: 200 * MB,
-  },
-  meteorological: {
-    label: "氣象資料",
-    formats: ".csv, .json, .nc",
-    maxSize: "50 MB",
-    allowedExts: [".csv", ".json", ".nc"],
-    maxSizeBytes: 50 * MB,
-  },
-};
-
-const DATA_TYPE_LABELS: Record<string, string> = {
-  sensor: "感測器資料",
-  flight_path: "飛行軌跡",
-  imagery: "影像資料",
-  meteorological: "氣象資料",
-};
+const ALLOWED_EXTS = [".txt", ".csv"];
+const SENSOR_LABEL = "感測器資料";
 
 function repairMojibakeText(value: string): string {
   const suspicious = /[ÃÂÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÙÚÛÜàáâãäåæèéêëìíîïòóôõùúûü�]/.test(
@@ -121,13 +70,6 @@ function formatHistoryTime(value: string | Date): string {
   return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
 }
 
-function getHistoryDataTypeLabel(
-  dataCategory: string,
-  dataType: string,
-): string {
-  return DATA_TYPE_LABELS[dataType] ?? (dataCategory === "uav" ? "無人機資料" : dataType);
-}
-
 interface StagedFile {
   id: string;
   file: File;
@@ -135,7 +77,7 @@ interface StagedFile {
 
 interface ValidationError {
   fileName: string;
-  reason: "ext" | "size";
+  reason: "ext";
   detail: string;
 }
 
@@ -229,10 +171,7 @@ const historySearchInputStyle = {
 export default function Upload() {
   const { uploadHistory: history, setUploadHistory: setHistory } = useAppData();
   const { token, user } = useAuth();
-  const [step, setStep] = useState<2 | 3 | 4>(2);
-  const [category] = useState<DataCategory>("uav");
-  const [uavType, setUavType] = useState<UAVSubType | null>(null);
-  const [hoveredType, setHoveredType] = useState<UAVSubType | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
   const [isDragging, setIsDragging] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -262,14 +201,6 @@ export default function Upload() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const currentConfig = uavType ? uavConfig[uavType] : null;
-
-  const currentConfigRef = useRef(currentConfig);
-
-  useEffect(() => {
-    currentConfigRef.current = currentConfig;
-  }, [currentConfig]);
-
   function formatSize(bytes: number): string {
     return bytes < 1024 * 1024
       ? `${(bytes / 1024).toFixed(1)} KB`
@@ -289,7 +220,7 @@ export default function Upload() {
           res.records.map((record) => ({
             id: record.uploadId,
             name: repairMojibakeText(record.fileName),
-            type: getHistoryDataTypeLabel(record.dataCategory, record.dataType),
+            type: SENSOR_LABEL,
             size: formatSize(record.fileSize),
             status:
               record.uploadStatus === "completed"
@@ -313,29 +244,18 @@ export default function Upload() {
 
   // Validate then stage files — rejected files surface as inline errors
   const stageFiles = (files: File[]) => {
-    if (!currentConfig) return;
     const errors: ValidationError[] = [];
     const accepted: StagedFile[] = [];
 
     for (const f of files) {
       const ext = "." + f.name.split(".").pop()?.toLowerCase();
-      const extOk = currentConfig.allowedExts.includes(ext);
-      const sizeOk = f.size <= currentConfig.maxSizeBytes;
-
-      if (!extOk) {
+      if (!ALLOWED_EXTS.includes(ext)) {
         errors.push({
           fileName: f.name,
           reason: "ext",
-          detail: `不支援的格式（${ext}），僅接受 ${currentConfig.formats}`,
-        });
-      } else if (!sizeOk) {
-        errors.push({
-          fileName: f.name,
-          reason: "size",
-          detail: `檔案過大（${formatSize(f.size)}），上限為 ${currentConfig.maxSize}`,
+          detail: `不支援的格式（${ext}），僅接受 ${ALLOWED_EXTS.join(", ")}`,
         });
       } else {
-        // Avoid duplicates already in staged list
         const isDuplicate = stagedFiles.some(
           (sf) => sf.file.name === f.name && sf.file.size === f.size,
         );
@@ -410,7 +330,7 @@ export default function Upload() {
           {
             id: event.uploadId,
             name: repairMojibakeText(info.file.name),
-            type: currentConfigRef.current?.label ?? "未知",
+            type: SENSOR_LABEL,
             size: formatSize(info.file.size),
             status: "completed",
             time: timeStr,
@@ -431,7 +351,7 @@ export default function Upload() {
           setTimeout(() => {
             setResults(finalResults);
             setIsUploading(false);
-            setStep(4);
+            setStep(2);
             setActiveUploadIds([]);
           }, 600);
           return prev;
@@ -462,7 +382,6 @@ export default function Upload() {
       status: "uploading",
     }));
     setUploadingFiles(initial);
-    setStep(3);
 
     if (isDemoMode) {
       const uploadResults: UploadResult[] = [];
@@ -508,7 +427,7 @@ export default function Upload() {
               {
                 id: Date.now() + Math.random(),
                 name: repairMojibakeText(sf.file.name),
-                type: currentConfigRef.current?.label ?? "未知",
+                type: SENSOR_LABEL,
                 size: formatSize(sf.file.size),
                 status: "completed",
                 time: timeStr,
@@ -523,7 +442,7 @@ export default function Upload() {
             setTimeout(() => {
               setResults(uploadResults);
               setIsUploading(false);
-              setStep(4);
+              setStep(2);
             }, 600);
           }
         }, duration);
@@ -532,13 +451,11 @@ export default function Upload() {
       return;
     }
 
-    const dataType = uavType ?? "sensor";
-
     try {
       const response = await uploadService.uploadFiles(
         pending.map((sf) => sf.file),
-        category,
-        dataType,
+        "uav",
+        "sensor",
         authToken,
       );
 
@@ -581,7 +498,6 @@ export default function Upload() {
         prev.map((f) => ({ ...f, status: "failed" })),
       );
       setIsUploading(false);
-      setStep(3);
     }
   };
 
@@ -591,8 +507,7 @@ export default function Upload() {
     setUploadingFiles([]);
     setValidationErrors([]);
     setIsUploading(false);
-    setStep(2);
-    setUavType(null);
+    setStep(1);
     setUploadError(null);
     uploadIdMapRef.current.clear();
     finishedCountRef.current = 0;
@@ -606,7 +521,7 @@ export default function Upload() {
     setUploadingFiles([]);
     setValidationErrors([]);
     setIsUploading(false);
-    setStep(3);
+    setStep(1);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -775,18 +690,15 @@ export default function Upload() {
             filteredHistory.length,
           );
 
-  // Step labels for stepper — 3 steps (skip category selection)
   const steps: [string, string][] = [
-    ["1", "選擇子類型"],
-    ["2", "上傳檔案"],
-    ["3", "上傳結果"],
+    ["1", "上傳檔案"],
+    ["2", "上傳結果"],
   ];
-  // internal step: 2=subtype, 3=upload, 4=result → display as 1,2,3
-  const displayStep = step === 2 ? 1 : step === 3 ? 2 : 3;
+  const displayStep = step;
 
   return (
     <div>
-      <Header title="資料上傳" subtitle="無人機資料上傳管理" />
+      <Header title="資料上傳" subtitle="感測器資料上傳管理" />
 
       {/* Stepper */}
       <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 24 }}>
@@ -818,102 +730,14 @@ export default function Upload() {
         })}
       </div>
 
-      {/* ── Step 2: 選擇子類型 ── */}
-      {step === 2 && (
+      {/* ── Step 1: 上傳檔案 ── */}
+      {step === 1 && (
         <Card style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 16 }}>
-            選擇無人機資料子類型
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {(Object.entries(uavConfig) as [UAVSubType, (typeof uavConfig)[UAVSubType]][]).map(([key, cfg]) => {
-              const selected = uavType === key;
-              const hovered = hoveredType === key;
-              return (
-                <label
-                  key={key}
-                  onMouseEnter={() => setHoveredType(key)}
-                  onMouseLeave={() => setHoveredType(null)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "14px 16px",
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    border: `1.5px solid ${
-                      selected ? "#6abe74" : hovered ? "rgba(106,190,116,0.5)" : "rgba(106,190,116,0.2)"
-                    }`,
-                    backgroundColor: selected
-                      ? "rgba(106,190,116,0.09)"
-                      : hovered
-                        ? "rgba(106,190,116,0.04)"
-                        : "#fff",
-                    boxShadow: hovered && !selected ? "0 2px 8px rgba(106,190,116,0.12)" : "none",
-                    transform: hovered && !selected ? "translateY(-1px)" : "none",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="subtype"
-                    value={key}
-                    checked={selected}
-                    onChange={() => setUavType(key as UAVSubType)}
-                    style={{ position: "absolute", opacity: 0, width: 0, height: 0 }}
-                  />
-                  <div style={{
-                    width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
-                    border: `2px solid ${selected ? "#6abe74" : hovered ? "rgba(106,190,116,0.6)" : "#d1d5db"}`,
-                    backgroundColor: selected ? "#6abe74" : "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "all 0.15s",
-                  }}>
-                    {selected && <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#fff" }} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: selected ? "#2d6a4f" : "#374151" }}>
-                      {cfg.label}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2, display: "flex", gap: 16 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <FileText size={11} /> {cfg.formats}
-                      </span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <Package size={11} /> 最大 {cfg.maxSize}
-                      </span>
-                    </div>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
-            <button
-              onClick={() => { if (uavType) setStep(3); }}
-              disabled={!uavType}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "8px 20px", borderRadius: 8, border: "none",
-                backgroundColor: uavType ? "#6abe74" : "#d1d5db",
-                color: "#fff", fontSize: 13, fontWeight: 600,
-                cursor: uavType ? "pointer" : "not-allowed",
-                transition: "background-color 0.15s",
-              }}
-            >
-              下一步 <ChevronRight size={15} />
-            </button>
-          </div>
-        </Card>
-      )}
-
-      {/* ── Step 3: 選擇檔案（手動確認才上傳） ── */}
-      {step === 3 && (
-        <Card style={{ marginBottom: 20 }}>
-          {/* 已選摘要 */}
+          {/* 資料類型說明列 */}
           <div
             style={{
               display: "flex",
-              alignItems: "flex-start",
+              alignItems: "center",
               gap: 8,
               marginBottom: 16,
               padding: "10px 14px",
@@ -924,35 +748,14 @@ export default function Upload() {
               flexWrap: "wrap",
             }}
           >
-            <span style={{ fontWeight: 600, color: "#374151" }}>
-              無人機資料 › {currentConfig?.label ?? '請先選擇子類型'}
-            </span>
+            <span style={{ fontWeight: 600, color: "#374151" }}>{SENSOR_LABEL}</span>
             <span>·</span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <FileText size={11} />
-              {currentConfig?.formats ?? '—'}
+              {ALLOWED_EXTS.join(", ")}
             </span>
             <span>·</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <Package size={11} />
-              最大 {currentConfig?.maxSize ?? '—'}
-            </span>
-            {!isUploading && (
-              <button
-                onClick={() => { setUavType(null); setStep(2); }}
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 11,
-                  color: "#6abe74",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                修改
-              </button>
-            )}
+            <span style={{ color: "#6b7280" }}>無大小限制</span>
           </div>
 
           {/* 拖放區 — 上傳進行中時隱藏 */}
@@ -1024,6 +827,7 @@ export default function Upload() {
                 ref={fileInputRef}
                 type="file"
                 multiple
+                accept=".txt,.csv"
                 style={{ display: "none" }}
                 onChange={handleFileChange}
               />
@@ -1112,19 +916,16 @@ export default function Upload() {
                       width: 18,
                       height: 18,
                       borderRadius: "50%",
-                      backgroundColor:
-                        err.reason === "size"
-                          ? "rgba(251,191,36,0.15)"
-                          : "rgba(239,68,68,0.1)",
+                      backgroundColor: "rgba(239,68,68,0.1)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 10,
                       fontWeight: 700,
-                      color: err.reason === "size" ? "#d97706" : "#ef4444",
+                      color: "#ef4444",
                     }}
                   >
-                    {err.reason === "size" ? "大" : "格"}
+                    格
                   </span>
                   <div>
                     <div
@@ -1445,37 +1246,11 @@ export default function Upload() {
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent: "flex-end",
               alignItems: "center",
               marginTop: 20,
             }}
           >
-            {!isUploading ? (
-              <button
-                onClick={() => {
-                  setStagedFiles([]);
-                  setUavType(null);
-                  setStep(2);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  border: "1px solid #e5e7eb",
-                  backgroundColor: "transparent",
-                  fontSize: 13,
-                  color: "#6b7280",
-                  cursor: "pointer",
-                }}
-              >
-                <ChevronLeft size={15} /> 上一步
-              </button>
-            ) : (
-              <div />
-            )}
-
             <button
               onClick={startUpload}
               disabled={stagedFiles.length === 0 || isUploading}
@@ -1521,8 +1296,8 @@ export default function Upload() {
         </Card>
       )}
 
-      {/* ── Step 4: 上傳結果 ── */}
-      {step === 4 && (
+      {/* ── Step 2: 上傳結果 ── */}
+      {step === 2 && (
         <Card style={{ marginBottom: 20 }}>
           {/* 大圖示結果標題 */}
           <div

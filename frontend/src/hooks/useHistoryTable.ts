@@ -43,13 +43,10 @@ function formatSize(bytes: number): string {
 
 const DATA_TYPE_LABELS: Record<string, string> = {
   sensor: "感測器資料",
-  flight_path: "飛行軌跡",
-  imagery: "影像資料",
-  meteorological: "氣象資料",
 };
 
-function getTypeLabel(category: string, dataType: string): string {
-  return DATA_TYPE_LABELS[dataType] ?? (category === "uav" ? "無人機資料" : dataType);
+function getTypeLabel(_category: string, dataType: string): string {
+  return DATA_TYPE_LABELS[dataType] ?? dataType;
 }
 
 function repairMojibake(value: string): string {
