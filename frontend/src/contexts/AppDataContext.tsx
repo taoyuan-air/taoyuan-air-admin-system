@@ -51,7 +51,7 @@ const initialSources: SourceRecord[] = [
   },
   {
     id: "7",
-    name: "WindLidar 風廓線光達",
+    name: "WindLidar 風光達",
     type: "SFTP",
     endpoint: "sftp://140.115.80.244/WindLidar",
     frequency: 60,
