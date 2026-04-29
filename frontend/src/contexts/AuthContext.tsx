@@ -14,11 +14,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const MOCK_USERS: (User & { password: string })[] = [
+const MOCK_USERS: User[] = [
   {
     userId: 1,
     username: "admin",
-    password: import.meta.env.VITE_MOCK_ADMIN_PASSWORD ?? "REMOVED_REVOKED_SECRET",
     email: "admin@taoyuan-air.gov.tw",
     fullName: "系統管理員",
     roleCode: "system_admin" as RoleCode,
@@ -32,7 +31,6 @@ const MOCK_USERS: (User & { password: string })[] = [
   {
     userId: 2,
     username: "manager",
-    password: import.meta.env.VITE_MOCK_MANAGER_PASSWORD ?? "REMOVED_REVOKED_SECRET",
     email: "manager@taoyuan-air.gov.tw",
     fullName: "資料管理員",
     roleCode: "data_manager" as RoleCode,
@@ -46,7 +44,6 @@ const MOCK_USERS: (User & { password: string })[] = [
   {
     userId: 3,
     username: "viewer",
-    password: import.meta.env.VITE_MOCK_VIEWER_PASSWORD ?? "REMOVED_REVOKED_SECRET",
     email: "viewer@taoyuan-air.gov.tw",
     fullName: "唯讀使用者",
     roleCode: "readonly" as RoleCode,
@@ -58,6 +55,12 @@ const MOCK_USERS: (User & { password: string })[] = [
     createdAt: "2024-01-01",
   },
 ];
+
+const MOCK_PASSWORD_BY_USERNAME: Record<string, string | undefined> = {
+  admin: import.meta.env.VITE_MOCK_ADMIN_PASSWORD,
+  manager: import.meta.env.VITE_MOCK_MANAGER_PASSWORD,
+  viewer: import.meta.env.VITE_MOCK_VIEWER_PASSWORD,
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
@@ -71,12 +74,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     if (isDemoMode) {
-      const found = MOCK_USERS.find(
-        (u) => u.username === username && u.password === password,
-      );
+      const found = MOCK_USERS.find((u) => u.username === username);
       if (!found) throw new Error("帳號或密碼錯誤");
-      const { password: _pw, ...userWithoutPassword } = found;
-      void _pw;
+
+      const expectedPassword = MOCK_PASSWORD_BY_USERNAME[found.username];
+      if (!expectedPassword) {
+        throw new Error(
+          "Demo 模式尚未設定該帳號密碼，請設定 VITE_MOCK_*_PASSWORD。",
+        );
+      }
+      if (password !== expectedPassword) throw new Error("帳號或密碼錯誤");
+
+      const userWithoutPassword = found;
       setUser(userWithoutPassword);
       setToken("demo-token");
       sessionStorage.setItem("auth_user", JSON.stringify(userWithoutPassword));
@@ -100,7 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(data.message ?? "登入失敗");
     }
 
-    const { token: jwt, user: userData } = data as { token: string; user: User };
+    const { token: jwt, user: userData } = data as {
+      token: string;
+      user: User;
+    };
     setUser(userData);
     setToken(jwt);
     sessionStorage.setItem("auth_user", JSON.stringify(userData));
@@ -126,7 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, clearMustChangePassword }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, clearMustChangePassword }}
+    >
       {children}
     </AuthContext.Provider>
   );
