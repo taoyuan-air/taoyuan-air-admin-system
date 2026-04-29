@@ -1,6 +1,6 @@
 export type DataCategory = 'uav';
 
-export type UAVDataType = 'sensor' | 'flight_path' | 'imagery' | 'meteorological';
+export type UAVDataType = 'sensor';
 export type DataType = UAVDataType;
 
 export type UploadStatus = 'uploading' | 'completed' | 'failed' | 'cancelled';

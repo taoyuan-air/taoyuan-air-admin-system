@@ -10,7 +10,6 @@ import {
 } from "../middlewares/auth";
 import {
   validateFileFormat,
-  validateFileSize,
 } from "../modules/validator/fileValidator";
 import { FileUploadRepository } from "../repositories/fileUploadRepository";
 import { StorageService } from "../services/storageService";
@@ -28,14 +27,14 @@ const router = Router();
 // multer 暫存至 uploads/tmp
 const tmpDir = path.join(process.env.UPLOAD_DIR ?? "uploads", "tmp");
 fs.mkdirSync(tmpDir, { recursive: true });
-const upload = multer({ dest: tmpDir });
-
-function normalizeOriginalName(name: string): string {
-  const decoded = Buffer.from(name, "latin1").toString("utf8");
-  const looksSuspicious =
-    /[ÃÂÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÙÚÛÜàáâãäåæèéêëìíîïòóôõùúûü�]/.test(name);
-  return looksSuspicious && decoded !== name ? decoded : name;
-}
+const upload = multer({
+  dest: tmpDir,
+  fileFilter: (_req, file, cb) => {
+    // multer 預設以 latin1 解讀檔名，這裡在最早階段修正為 UTF-8
+    file.originalname = Buffer.from(file.originalname, "latin1").toString("utf8");
+    cb(null, true);
+  },
+});
 
 const authMiddlewares = [
   authenticateJWT,
@@ -79,26 +78,12 @@ router.post(
       detail: string;
     }[] = [];
     for (const f of files) {
-      const originalName = normalizeOriginalName(f.originalname);
-      const fmtResult = validateFileFormat(
-        originalName,
-        dataCategory,
-        dataType,
-      );
+      const fmtResult = validateFileFormat(f.originalname, dataCategory, dataType);
       if (!fmtResult.valid) {
         validationErrors.push({
-          fileName: originalName,
+          fileName: f.originalname,
           reason: "UNSUPPORTED_FORMAT",
           detail: fmtResult.error!,
-        });
-        continue;
-      }
-      const sizeResult = validateFileSize(f.size, dataCategory, dataType);
-      if (!sizeResult.valid) {
-        validationErrors.push({
-          fileName: originalName,
-          reason: "FILE_TOO_LARGE",
-          detail: sizeResult.error!,
         });
       }
     }
@@ -117,10 +102,9 @@ router.post(
     const uploadIds: number[] = [];
 
     for (const f of files) {
-      const originalName = normalizeOriginalName(f.originalname);
       const record = await FileUploadRepository.create({
         userId: user.userId,
-        fileName: originalName,
+        fileName: f.originalname,
         filePath: "",
         fileSize: f.size,
         dataCategory,
@@ -143,7 +127,7 @@ router.post(
           ProgressService.set(record.uploadId, 50, "uploading");
           const filePath = await StorageService.saveFile(
             f.path,
-            originalName,
+            f.originalname,
             dataCategory,
             dataType,
           );

@@ -5,9 +5,7 @@ import type { DataCategory, DataType } from '../shared/types/upload';
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
 
 const ALLOWED_CATEGORIES = new Set(['uav']);
-const ALLOWED_TYPES = new Set([
-  'sensor', 'flight_path', 'imagery', 'meteorological',
-]);
+const ALLOWED_TYPES = new Set(['sensor']);
 
 export const StorageService = {
   async saveFile(
@@ -19,7 +17,7 @@ export const StorageService = {
     if (!ALLOWED_CATEGORIES.has(dataCategory) || !ALLOWED_TYPES.has(dataType)) {
       throw new Error(`不允許的 dataCategory 或 dataType: ${dataCategory}/${dataType}`);
     }
-    const destDir = path.join(UPLOAD_DIR, dataCategory, dataType);
+    const destDir = path.join(UPLOAD_DIR, dataCategory);
     fs.mkdirSync(destDir, { recursive: true });
 
     const timestamp = Date.now();
