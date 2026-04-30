@@ -11,3 +11,5 @@ backend/uploads/**
 !backend/uploads/lidar/.gitkeep
 !backend/uploads/uav/.gitkeep
 !backend/uploads/tmp/.gitkeep
+!backend/uploads/sftp/.gitkeep
+!backend/uploads/sftp/naqo/.gitkeep
