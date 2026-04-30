@@ -2,9 +2,8 @@ import { pool } from "../db/pool";
 import fs from "fs";
 import path from "path";
 
-const NAQO_BASE = "https://tortoise-fluent-rationally.ngrok-free.app";
 const STATION_ID = "NAQO_NCU";
-const NAQO_DIR = path.join(process.env.UPLOAD_DIR ?? "uploads", "naqo");
+const SFTP_NAQO_DIR = path.join(process.env.UPLOAD_DIR ?? "uploads", "sftp", "naqo");
 
 interface NaqoRecord {
   日期時間: string;
@@ -59,43 +58,34 @@ async function updateLogStatus(
   );
 }
 
-export async function fetchAndIngestNaqo(): Promise<void> {
-  const now = new Date();
-  const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const fileName = `NAQO_API_${yyyymm}.json`;
+async function isAlreadyParsed(fileName: string): Promise<boolean> {
+  const result = await pool.query(
+    `SELECT 1 FROM sftp_transfer_logs WHERE source = 'NAQO' AND file_name = $1 AND status = 'parsed' LIMIT 1`,
+    [fileName],
+  );
+  return result.rowCount !== null && result.rowCount > 0;
+}
 
+async function ingestFile(fileName: string, filePath: string): Promise<void> {
   let logId: number | null = null;
-
   try {
     logId = await logTransfer("NAQO", fileName, null, "received");
 
-    const res = await fetch(`${NAQO_BASE}/api/60min/json/${yyyymm}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const text = await res.text();
-    // API 回傳 HTML，JSON 資料包在 <pre>...</pre> 內
-    const match = text.match(/<pre>([\/\s\S]*?)<\/pre>/);
-    const jsonStr = match ? match[1].replace(/&#34;/g, '"') : text;
-    const records: NaqoRecord[] = JSON.parse(jsonStr);
-    if (!Array.isArray(records)) throw new Error("回傳格式非陣列");
-
-    // 原始 JSON 落地存檔
-    fs.mkdirSync(NAQO_DIR, { recursive: true });
-    const filePath = path.join(NAQO_DIR, fileName);
-    const fileContent = JSON.stringify(records, null, 2);
-    fs.writeFileSync(filePath, fileContent, "utf-8");
+    const fileContent = fs.readFileSync(filePath, "utf-8");
     const fileSize = Buffer.byteLength(fileContent, "utf-8");
+    const records: NaqoRecord[] = JSON.parse(fileContent);
+    if (!Array.isArray(records)) throw new Error("檔案格式非陣列");
 
-    // 更新 log 的 file_size
     await pool.query(
       "UPDATE sftp_transfer_logs SET file_size = $1 WHERE id = $2",
       [fileSize, logId],
     );
+
     let inserted = 0;
     for (const row of records) {
       const measuredAt = parseTimestamp(row["日期時間"]);
 
-      // 計算 NO₂：NO₂ = NOX - NO
+      // NO₂ = NOX - NO（NAQO 資料來源無原生 NO2 欄位）
       const noxVal = f(row.NOX);
       const noVal = f(row.NO);
       const no2Val = noxVal !== null && noVal !== null ? noxVal - noVal : null;
@@ -129,7 +119,28 @@ export async function fetchAndIngestNaqo(): Promise<void> {
     console.log(`[NAQO] ingested ${inserted} rows from ${fileName}`);
   } catch (err) {
     const msg = String(err);
-    console.error(`[NAQO] fetch failed: ${msg}`);
+    console.error(`[NAQO] failed to ingest ${fileName}: ${msg}`);
     if (logId !== null) await updateLogStatus(logId, "failed", msg);
+  }
+}
+
+export async function fetchAndIngestNaqo(): Promise<void> {
+  if (!fs.existsSync(SFTP_NAQO_DIR)) {
+    console.warn(`[NAQO] SFTP directory not found: ${SFTP_NAQO_DIR}`);
+    return;
+  }
+
+  const files = fs.readdirSync(SFTP_NAQO_DIR).filter((f) => f.endsWith(".json"));
+  if (files.length === 0) {
+    console.log("[NAQO] no JSON files found in SFTP directory");
+    return;
+  }
+
+  for (const fileName of files) {
+    if (await isAlreadyParsed(fileName)) {
+      console.log(`[NAQO] skip already parsed: ${fileName}`);
+      continue;
+    }
+    await ingestFile(fileName, path.join(SFTP_NAQO_DIR, fileName));
   }
 }
