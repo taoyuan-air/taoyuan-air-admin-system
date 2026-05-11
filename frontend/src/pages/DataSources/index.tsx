@@ -6,6 +6,7 @@ import Select from 'react-select';
 import Card from '../../components/Card';
 import Header from '../../components/Layout/Header';
 import StatusBadge from '../../components/StatusBadge';
+import IncidentLogSection from './IncidentLogSection';
 import { useAppData } from '../../contexts/AppDataContext';
 import type { SourceRecord } from '../../contexts/AppDataContext';
 
@@ -101,6 +102,7 @@ const logStatusIcon = (s: string) => {
 export default function DataSources() {
   const { sources, setSources } = useAppData();
   const navigate = useNavigate();
+  const [activeSubPage, setActiveSubPage] = useState<'sources' | 'incidents'>('sources');
   const [testingId, setTestingId]   = useState<string | null>(null);
 
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function DataSources() {
         }));
       })
       .catch(() => {});
-  }, []);
+  }, [setSources]);
   const [showForm, setShowForm]     = useState(false);
   const [editingSrc, setEditingSrc] = useState<SourceRecord | null>(null);
   const [form, setForm]             = useState(emptyForm);
@@ -132,13 +134,16 @@ export default function DataSources() {
   useEffect(() => {
     if (!sftpLogSrc) return;
     if (isDemoMode) {
-      setSftpLogs(mockSftpLogs[sftpLogSrc.id] ?? []);
-      return;
+      const timer = window.setTimeout(() => setSftpLogs(mockSftpLogs[sftpLogSrc.id] ?? []), 0);
+      return () => window.clearTimeout(timer);
     }
     const sourceMap: Record<string, string> = { '6': 'NAQO', '7': 'WindLidar', '8': 'MPL' };
     const source = sourceMap[sftpLogSrc.id];
-    if (!source) { setSftpLogs([]); return; }
-    setSftpLoading(true);
+    if (!source) {
+      const timer = window.setTimeout(() => setSftpLogs([]), 0);
+      return () => window.clearTimeout(timer);
+    }
+    const loadingTimer = window.setTimeout(() => setSftpLoading(true), 0);
     const token = sessionStorage.getItem('auth_token');
     fetch(apiUrl(`/api/sftp/logs?source=${source}&limit=50`), {
       headers: { Authorization: `Bearer ${token}` },
@@ -158,6 +163,7 @@ export default function DataSources() {
       ))
       .catch(() => setSftpLogs([]))
       .finally(() => setSftpLoading(false));
+    return () => window.clearTimeout(loadingTimer);
   }, [sftpLogSrc]);
 
   const isEditing = editingSrc !== null;
@@ -206,17 +212,53 @@ export default function DataSources() {
     <div>
       <Header title="資料來源管理" subtitle="管理各資料來源的 API 設定與同步排程" />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <button onClick={openAdd} style={{
-          padding: '10px 20px', backgroundColor: '#6abe74',
-          color: '#fff', border: 'none', borderRadius: 12,
-          fontSize: 14, fontWeight: 600, cursor: 'pointer',
-        }}>+ 新增資料來源</button>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{
+          display: 'inline-flex', gap: 4, padding: 4,
+          borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.72)',
+          border: '1px solid rgba(0,0,0,0.08)',
+        }}>
+          {[
+            { key: 'sources' as const, label: '資料來源設定', icon: <Database size={14} /> },
+            { key: 'incidents' as const, label: '傳輸異常事件', icon: <AlertCircle size={14} /> },
+          ].map(tab => {
+            const active = activeSubPage === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveSubPage(tab.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 14px', borderRadius: 9, border: 'none',
+                  backgroundColor: active ? '#6abe74' : 'transparent',
+                  color: active ? '#fff' : '#666',
+                  fontSize: 13, fontWeight: active ? 700 : 600,
+                  cursor: 'pointer',
+                  boxShadow: active ? '0 2px 8px rgba(106,190,116,0.25)' : 'none',
+                }}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {sources.map(src => (
-          <Card key={src.id} padding={20}>
+      {activeSubPage === 'sources' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <button onClick={openAdd} style={{
+            padding: '10px 20px', backgroundColor: '#6abe74',
+            color: '#fff', border: 'none', borderRadius: 12,
+            fontSize: 14, fontWeight: 600, cursor: 'pointer',
+          }}>+ 新增資料來源</button>
+        </div>
+      )}
+
+      {activeSubPage === 'sources' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {sources.map(src => (
+            <Card key={src.id} padding={20}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{
@@ -316,9 +358,12 @@ export default function DataSources() {
                 同步日誌
               </button>
             </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <IncidentLogSection />
+      )}
 
       {/* ── 新增 / 編輯 Modal ── */}
       {showForm && (
