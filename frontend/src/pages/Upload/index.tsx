@@ -17,6 +17,8 @@ import {
   RotateCcw,
   FolderCheck,
   FileSpreadsheet,
+  MapPin,
+  ChevronRight,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Card from "../../components/Card";
@@ -33,6 +35,15 @@ const SENSOR_LABEL = "感測器資料";
 const STATION_OPTIONS = ["桃園", "大園", "觀音", "平鎮", "龍潭", "中壢"] as const;
 
 type StationOption = (typeof STATION_OPTIONS)[number];
+
+const STATION_DISTRICTS: Record<StationOption, string> = {
+  桃園: "桃園市桃園區",
+  大園: "桃園市大園區",
+  觀音: "桃園市觀音區",
+  平鎮: "桃園市平鎮區",
+  龍潭: "桃園市龍潭區",
+  中壢: "桃園市中壢區",
+};
 
 function repairMojibakeText(value: string): string {
   const suspicious = /[ÃÂÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÙÚÛÜàáâãäåæèéêëìíîïòóôõùúûü�]/.test(
@@ -1327,28 +1338,22 @@ export default function Upload() {
       {/* ── Step 1: 選擇測站 ── */}
       {step === 1 && (
         <Card style={{ marginBottom: 20 }}>
-          <div style={{ marginBottom: 18 }}>
-            <div
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                color: "#374151",
-                marginBottom: 6,
-              }}
-            >
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#374151", marginBottom: 4 }}>
               選擇上傳測站
             </div>
             <div style={{ fontSize: 13, color: "#6b7280" }}>
-              請選擇這批檔案所屬測站。目前僅在前端記錄，暫不送出至後端。
+              請選擇這批檔案所屬測站
             </div>
           </div>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              gridTemplateColumns: "1fr 1fr",
+              gridTemplateRows: "repeat(3, auto)",
+              gridAutoFlow: "column",
               gap: 10,
-              marginBottom: 20,
             }}
           >
             {STATION_OPTIONS.map((station) => {
@@ -1359,55 +1364,115 @@ export default function Upload() {
                   type="button"
                   onClick={() => setSelectedStation(station)}
                   style={{
-                    padding: "14px 16px",
-                    borderRadius: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    width: "100%",
+                    padding: "16px 20px",
+                    borderRadius: 12,
                     border: active
-                      ? "1.5px solid #6abe74"
-                      : "1px solid rgba(0,0,0,0.12)",
+                      ? "2px solid #6abe74"
+                      : "1.5px solid rgba(0,0,0,0.10)",
                     backgroundColor: active
-                      ? "rgba(106,190,116,0.08)"
+                      ? "rgba(106,190,116,0.07)"
                       : "#fff",
-                    color: active ? "#2d6a4f" : "#374151",
-                    fontSize: 14,
-                    fontWeight: active ? 700 : 600,
                     cursor: "pointer",
-                    minHeight: 48,
+                    textAlign: "left",
+                    transition: "border-color 0.15s, background-color 0.15s",
+                    outline: "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.borderColor = "rgba(106,190,116,0.5)";
+                      e.currentTarget.style.backgroundColor = "rgba(106,190,116,0.03)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      e.currentTarget.style.borderColor = "rgba(0,0,0,0.10)";
+                      e.currentTarget.style.backgroundColor = "#fff";
+                    }
                   }}
                 >
-                  {station}
+                  {/* Radio dot */}
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      border: `2px solid ${active ? "#6abe74" : "#d1d5db"}`,
+                      backgroundColor: active ? "#6abe74" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {active && (
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: "#fff",
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Station info */}
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: active ? "#1a4731" : "#374151",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {station}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 12,
+                        color: "#9ca3af",
+                      }}
+                    >
+                      <MapPin size={11} />
+                      <span>{STATION_DISTRICTS[station]}</span>
+                      <span>·</span>
+                      <span>空氣品質監測站</span>
+                    </div>
+                  </div>
                 </button>
               );
             })}
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              alignItems: "center",
-              gap: 12,
-              marginTop: 20,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
             <button
               onClick={() => setStep(2)}
               disabled={!selectedStation}
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
+                gap: 6,
                 padding: "10px 24px",
                 borderRadius: 8,
                 border: "none",
-                backgroundColor:
-                  !selectedStation ? "#d1d5db" : "#6abe74",
+                backgroundColor: !selectedStation ? "#d1d5db" : "#6abe74",
                 color: "#fff",
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: !selectedStation ? "not-allowed" : "pointer",
+                transition: "background-color 0.15s",
               }}
             >
-              下一步
+              下一步 <ChevronRight size={16} />
             </button>
           </div>
         </Card>
