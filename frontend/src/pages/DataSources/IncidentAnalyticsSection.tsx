@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { BarChart3, Calendar, ChevronLeft, ChevronRight, LineChart, PieChart, X } from 'lucide-react';
+import { BarChart3, LineChart, PieChart } from 'lucide-react';
 import Select from 'react-select';
 import Card from '../../components/Card';
+import DatePicker from '../../components/DatePicker';
 import {
   INCIDENT_SOURCE_OPTIONS,
   INCIDENT_TYPE_OPTIONS,
@@ -150,195 +151,6 @@ const percentText = (value: number, total: number) => {
 
 const isInvalidCustomRange = (from: string, to: string) => Boolean(from && to && from > to);
 const strong = (text: string): SummaryPart => ({ text, strong: true });
-
-const parseDateInput = (value: string) => {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-};
-
-const toDateInput = (date: Date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-
-const buildCalendarDays = (monthDate: Date) => {
-  const startOffset = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
-  const start = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1 - startOffset);
-  return Array.from({ length: 42 }, (_, index) => addDays(start, index));
-};
-
-function DateField({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const selected = parseDateInput(value);
-  const today = new Date();
-  const [viewMonth, setViewMonth] = useState(() =>
-    selected
-      ? new Date(selected.getFullYear(), selected.getMonth(), 1)
-      : new Date(today.getFullYear(), today.getMonth(), 1)
-  );
-  const days = buildCalendarDays(viewMonth);
-  const selectedKey = selected ? toDateInput(selected) : '';
-  const todayKey = toDateInput(today);
-
-  const toggleOpen = () => {
-    if (!open) {
-      const target = selected ?? today;
-      setViewMonth(new Date(target.getFullYear(), target.getMonth(), 1));
-    }
-    setOpen(prev => !prev);
-    setFocused(true);
-  };
-
-  const selectDate = (date: Date) => {
-    onChange(toDateInput(date));
-    setOpen(false);
-  };
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <button
-        type="button"
-        onClick={toggleOpen}
-        onBlur={() => setFocused(false)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-          border: `1px solid ${focused || open ? '#6abe74' : 'rgba(0,0,0,0.12)'}`,
-          borderRadius: 8, backgroundColor: '#fff',
-          boxShadow: focused || open ? '0 0 0 2px rgba(106,190,116,0.2)' : 'none',
-          transition: 'border-color 0.15s, box-shadow 0.15s',
-          padding: '9px 10px', cursor: 'pointer', textAlign: 'left',
-        }}
-      >
-        <Calendar size={14} color="#6abe74" />
-        <span style={{
-          flex: 1, minWidth: 0,
-          color: value ? '#374151' : '#aaa',
-          fontSize: 13, fontWeight: value ? 600 : 400,
-        }}>
-          {selected ? formatDate(selected) : placeholder}
-        </span>
-        {value && (
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label="清除日期"
-            onClick={event => {
-              event.stopPropagation();
-              onChange('');
-              setOpen(false);
-            }}
-            onKeyDown={event => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                event.stopPropagation();
-                onChange('');
-                setOpen(false);
-              }
-            }}
-            style={{
-              width: 20, height: 20, borderRadius: 999,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#999', backgroundColor: 'rgba(0,0,0,0.04)',
-              flexShrink: 0,
-            }}
-          >
-            <X size={12} />
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div style={{
-          position: 'absolute', left: 0, right: 0, top: 'calc(100% + 8px)',
-          padding: 12, borderRadius: 14,
-          backgroundColor: '#fff',
-          border: '1px solid rgba(106,190,116,0.2)',
-          boxShadow: '0 10px 28px rgba(0,0,0,0.12)',
-          zIndex: 30,
-          minWidth: 280,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>
-              {viewMonth.getFullYear()} 年 {viewMonth.getMonth() + 1} 月
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[
-                { icon: <ChevronLeft size={14} />, onClick: () => setViewMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)) },
-                { icon: <ChevronRight size={14} />, onClick: () => setViewMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)) },
-              ].map((button, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={button.onClick}
-                  style={{
-                    width: 28, height: 28, borderRadius: 8,
-                    border: '1px solid rgba(0,0,0,0.08)',
-                    backgroundColor: '#fff', color: '#666',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {button.icon}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
-            {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-              <div key={day} style={{ textAlign: 'center', fontSize: 11, color: '#999', fontWeight: 700, padding: '4px 0' }}>{day}</div>
-            ))}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-            {days.map(date => {
-              const key = toDateInput(date);
-              const isSelected = key === selectedKey;
-              const isToday = key === todayKey;
-              const muted = date.getMonth() !== viewMonth.getMonth();
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => selectDate(date)}
-                  style={{
-                    height: 30, borderRadius: 8,
-                    border: isToday && !isSelected ? '1px solid rgba(106,190,116,0.45)' : '1px solid transparent',
-                    backgroundColor: isSelected ? '#6abe74' : isToday ? 'rgba(106,190,116,0.08)' : 'transparent',
-                    color: isSelected ? '#fff' : muted ? '#aaa' : '#374151',
-                    fontSize: 12, fontWeight: isSelected || isToday ? 700 : 500,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {date.getDate()}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-            <button
-              type="button"
-              onClick={() => selectDate(today)}
-              style={{
-                padding: 0, border: 'none',
-                backgroundColor: 'transparent', color: '#4a9e55',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-              }}
-            >
-              設為今天
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function SegmentedButton<T extends string>({
   options,
@@ -744,11 +556,11 @@ export default function IncidentAnalyticsSection({ incidents }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 12 }}>
           <div>
             <label style={labelStyle}>開始日期</label>
-            <DateField value={customFrom} onChange={setCustomFrom} placeholder="選擇開始日期" />
+            <DatePicker value={customFrom} onChange={setCustomFrom} placeholder="選擇開始日期" isClearable />
           </div>
           <div>
             <label style={labelStyle}>結束日期</label>
-            <DateField value={customTo} onChange={setCustomTo} placeholder="選擇結束日期" />
+            <DatePicker value={customTo} onChange={setCustomTo} placeholder="選擇結束日期" isClearable />
           </div>
           {invalidCustomRange && (
             <div style={{

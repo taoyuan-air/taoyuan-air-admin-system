@@ -298,7 +298,7 @@ App.tsx
         ├── Header                               ← 標題列（共用）
         ├── LidarControls                        ← 查詢控制列
         │   ├── react-select（站點、高度上限）
-        │   └── LidarDateField（自訂日曆元件）
+        │   └── components/DatePicker（自訂日曆元件）
         ├── loading 骨架 / 錯誤提示 / 空狀態
         └── LidarPanel × 4（每個面板各自獨立）
             └── <div ref={divRef}>               ← Plotly.newPlot 直接掛載
@@ -336,7 +336,7 @@ LidarPanel 觸發 plotly_relayout
 
 使用者可在此調整：
 - **站點**：`react-select` 下拉，選項來自 `LidarStationsResponse.stations`
-- **日期**：自訂 `LidarDateField` 元件，內建月曆（含「今天」快捷鍵、前後月切換）
+- **日期**：自訂 `DatePicker` 元件，內建月曆（含「今天」快捷鍵、前後月切換）
 - **高度上限**：`react-select`，固定選項 0.5 / 1 / 2 / 5 km
 - **面板勾選**：四個 checkbox，樣式為 toggle 按鈕
 - **套用按鈕**：觸發 `loadPlotData`，loading 期間禁用並旋轉圖示
