@@ -30,6 +30,9 @@ import { isDemoMode } from "../../config/api";
 
 const ALLOWED_EXTS = [".txt", ".csv"];
 const SENSOR_LABEL = "感測器資料";
+const STATION_OPTIONS = ["桃園", "大園", "觀音", "平鎮", "龍潭", "中壢"] as const;
+
+type StationOption = (typeof STATION_OPTIONS)[number];
 
 function repairMojibakeText(value: string): string {
   const suspicious = /[ÃÂÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÙÚÛÜàáâãäåæèéêëìíîïòóôõùúûü�]/.test(
@@ -171,9 +174,10 @@ const historySearchInputStyle = {
 export default function Upload() {
   const { uploadHistory: history, setUploadHistory: setHistory } = useAppData();
   const { token, user } = useAuth();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isDragging, setIsDragging] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+  const [selectedStation, setSelectedStation] = useState<StationOption | "">("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [results, setResults] = useState<UploadResult[]>([]);
@@ -351,7 +355,7 @@ export default function Upload() {
           setTimeout(() => {
             setResults(finalResults);
             setIsUploading(false);
-            setStep(2);
+            setStep(3);
             setActiveUploadIds([]);
           }, 600);
           return prev;
@@ -363,6 +367,10 @@ export default function Upload() {
   // Submit real upload request, then track progress from backend SSE
   const startUpload = async () => {
     if (stagedFiles.length === 0 || isUploading) return;
+    if (!selectedStation) {
+      setUploadError("請先選擇測站。");
+      return;
+    }
     const authToken = token ?? "";
     if (!isDemoMode && !authToken) {
       setUploadError("尚未登入，請先重新登入後再上傳。");
@@ -442,7 +450,7 @@ export default function Upload() {
             setTimeout(() => {
               setResults(uploadResults);
               setIsUploading(false);
-              setStep(2);
+              setStep(3);
             }, 600);
           }
         }, duration);
@@ -503,6 +511,7 @@ export default function Upload() {
 
   const resetAll = () => {
     setStagedFiles([]);
+    setSelectedStation("");
     setResults([]);
     setUploadingFiles([]);
     setValidationErrors([]);
@@ -517,6 +526,7 @@ export default function Upload() {
 
   const goUploadAgain = () => {
     setStagedFiles([]);
+    setSelectedStation("");
     setResults([]);
     setUploadingFiles([]);
     setValidationErrors([]);
@@ -691,8 +701,9 @@ export default function Upload() {
           );
 
   const steps: [string, string][] = [
-    ["1", "上傳檔案"],
-    ["2", "上傳結果"],
+    ["1", "選擇測站"],
+    ["2", "上傳檔案"],
+    ["3", "上傳結果"],
   ];
   const displayStep = step;
 
@@ -730,8 +741,8 @@ export default function Upload() {
         })}
       </div>
 
-      {/* ── Step 1: 上傳檔案 ── */}
-      {step === 1 && (
+      {/* ── Step 2: 上傳檔案 ── */}
+      {step === 2 && (
         <Card style={{ marginBottom: 20 }}>
           {/* 資料類型說明列 */}
           <div
@@ -1246,14 +1257,31 @@ export default function Upload() {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
+              justifyContent: "space-between",
               alignItems: "center",
+              gap: 12,
               marginTop: 20,
             }}
           >
             <button
+              onClick={() => setStep(1)}
+              disabled={isUploading}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 8,
+                border: "1.5px solid #d1d5db",
+                backgroundColor: "#fff",
+                color: isUploading ? "#9ca3af" : "#374151",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: isUploading ? "not-allowed" : "pointer",
+              }}
+            >
+              返回上一步
+            </button>
+            <button
               onClick={startUpload}
-              disabled={stagedFiles.length === 0 || isUploading}
+              disabled={stagedFiles.length === 0 || !selectedStation || isUploading}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1262,14 +1290,14 @@ export default function Upload() {
                 borderRadius: 8,
                 border: "none",
                 backgroundColor:
-                  stagedFiles.length === 0 || isUploading
+                  stagedFiles.length === 0 || !selectedStation || isUploading
                     ? "#d1d5db"
                     : "#6abe74",
                 color: "#fff",
                 fontSize: 14,
                 fontWeight: 700,
                 cursor:
-                  stagedFiles.length === 0 || isUploading
+                  stagedFiles.length === 0 || !selectedStation || isUploading
                     ? "not-allowed"
                     : "pointer",
                 transition: "background-color 0.15s",
@@ -1296,8 +1324,97 @@ export default function Upload() {
         </Card>
       )}
 
-      {/* ── Step 2: 上傳結果 ── */}
-      {step === 2 && (
+      {/* ── Step 1: 選擇測站 ── */}
+      {step === 1 && (
+        <Card style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 18 }}>
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#374151",
+                marginBottom: 6,
+              }}
+            >
+              選擇上傳測站
+            </div>
+            <div style={{ fontSize: 13, color: "#6b7280" }}>
+              請選擇這批檔案所屬測站。目前僅在前端記錄，暫不送出至後端。
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              gap: 10,
+              marginBottom: 20,
+            }}
+          >
+            {STATION_OPTIONS.map((station) => {
+              const active = selectedStation === station;
+              return (
+                <button
+                  key={station}
+                  type="button"
+                  onClick={() => setSelectedStation(station)}
+                  style={{
+                    padding: "14px 16px",
+                    borderRadius: 8,
+                    border: active
+                      ? "1.5px solid #6abe74"
+                      : "1px solid rgba(0,0,0,0.12)",
+                    backgroundColor: active
+                      ? "rgba(106,190,116,0.08)"
+                      : "#fff",
+                    color: active ? "#2d6a4f" : "#374151",
+                    fontSize: 14,
+                    fontWeight: active ? 700 : 600,
+                    cursor: "pointer",
+                    minHeight: 48,
+                  }}
+                >
+                  {station}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 12,
+              marginTop: 20,
+            }}
+          >
+            <button
+              onClick={() => setStep(2)}
+              disabled={!selectedStation}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 24px",
+                borderRadius: 8,
+                border: "none",
+                backgroundColor:
+                  !selectedStation ? "#d1d5db" : "#6abe74",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: !selectedStation ? "not-allowed" : "pointer",
+              }}
+            >
+              下一步
+            </button>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Step 3: 上傳結果 ── */}
+      {step === 3 && (
         <Card style={{ marginBottom: 20 }}>
           {/* 大圖示結果標題 */}
           <div
