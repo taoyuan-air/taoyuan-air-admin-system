@@ -6,6 +6,7 @@ import uploadRouter from './routes/uploads';
 import authRouter from './routes/auth';
 import usersRouter from './routes/users';
 import sftpRouter from './routes/sftp';
+import lidarRouter from './routes/lidar';
 import { fetchAndIngestNaqo } from './jobs/naqoFetcher';
 
 dotenv.config();
@@ -20,6 +21,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/uploads', uploadRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/sftp', sftpRouter);
+app.use('/api/lidar', lidarRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 

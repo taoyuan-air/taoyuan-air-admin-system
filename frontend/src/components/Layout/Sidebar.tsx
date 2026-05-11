@@ -6,17 +6,19 @@ import {
   Radio,
   Users,
   Wind,
+  Layers,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import type { RoleCode } from "../../types";
 
 const navItems: { path: string; label: string; Icon: React.ElementType; allowedRoles: RoleCode[] }[] = [
-  { path: "/",            label: "儀表板",   Icon: LayoutDashboard, allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
-  { path: "/upload",      label: "資料上傳", Icon: Upload,          allowedRoles: ['system_admin', 'data_manager'] },
-  { path: "/data-sources",label: "資料來源", Icon: Database,        allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
-  { path: "/stations",   label: "測站管理", Icon: Radio,           allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
-  { path: "/users",      label: "使用者管理",Icon: Users,           allowedRoles: ['system_admin'] },
+  { path: "/",            label: "儀表板",     Icon: LayoutDashboard, allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/upload",      label: "資料上傳",   Icon: Upload,          allowedRoles: ['system_admin', 'data_manager'] },
+  { path: "/data-sources",label: "資料來源",   Icon: Database,        allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/lidar",       label: "風光達分析", Icon: Layers,          allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/stations",    label: "測站管理",   Icon: Radio,           allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/users",       label: "使用者管理", Icon: Users,           allowedRoles: ['system_admin'] },
 ];
 
 function UserBlock() {
