@@ -38,7 +38,7 @@ export interface HistoryRecord {
   filePath: string;
   fileSize: number;
   dataCategory: string;
-  dataType: string;
+  station: string;
   uploadStatus: string;
   validationStatus: string;
   metadata?: object;
@@ -57,14 +57,12 @@ export const uploadService = {
   async uploadFiles(
     files: File[],
     dataCategory: string,
-    dataType: string,
     token: string,
     metadata?: object,
   ): Promise<UploadResponse> {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
     form.append("dataCategory", dataCategory);
-    form.append("dataType", dataType);
     if (metadata) form.append("metadata", JSON.stringify(metadata));
 
     let res: Response;

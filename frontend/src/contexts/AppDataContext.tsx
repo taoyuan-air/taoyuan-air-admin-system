@@ -30,11 +30,11 @@ export interface StationRecord {
 export interface HistoryRecord {
   id: number;
   name: string;
-  type: string;
   size: string;
   status: "completed" | "processing" | "failed";
   time: string;
   user: string;
+  station?: string;
 }
 
 const initialSources: SourceRecord[] = [
@@ -181,7 +181,6 @@ const initialHistory: HistoryRecord[] = [
   {
     id: 2,
     name: "uav_flight_20260401.csv",
-    type: "UAV 感測器",
     size: "12 MB",
     status: "completed",
     time: "2026-04-01 08:15",

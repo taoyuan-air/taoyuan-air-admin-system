@@ -31,10 +31,10 @@ import { useUploadProgress } from "../../hooks/useUploadProgress";
 import { isDemoMode } from "../../config/api";
 
 const ALLOWED_EXTS = [".txt", ".csv"];
-const SENSOR_LABEL = "感測器資料";
 const STATION_OPTIONS = ["桃園", "大園", "觀音", "平鎮", "龍潭", "中壢"] as const;
 
 type StationOption = (typeof STATION_OPTIONS)[number];
+type StationSlug = "taoyuan" | "dayuan" | "guanyin" | "pingzhen" | "longtan" | "zhongli";
 
 const STATION_DISTRICTS: Record<StationOption, string> = {
   桃園: "桃園市桃園區",
@@ -44,6 +44,29 @@ const STATION_DISTRICTS: Record<StationOption, string> = {
   龍潭: "桃園市龍潭區",
   中壢: "桃園市中壢區",
 };
+
+const STATION_SLUGS: Record<StationOption, StationSlug> = {
+  桃園: "taoyuan",
+  大園: "dayuan",
+  觀音: "guanyin",
+  平鎮: "pingzhen",
+  龍潭: "longtan",
+  中壢: "zhongli",
+};
+
+const STATION_LABELS: Record<string, StationOption> = {
+  taoyuan: "桃園",
+  dayuan: "大園",
+  guanyin: "觀音",
+  pingzhen: "平鎮",
+  longtan: "龍潭",
+  zhongli: "中壢",
+};
+
+function formatStation(value?: string): string | undefined {
+  if (!value) return undefined;
+  return STATION_LABELS[value] ?? value;
+}
 
 function repairMojibakeText(value: string): string {
   const suspicious = /[ÃÂÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÙÚÛÜàáâãäåæèéêëìíîïòóôõùúûü�]/.test(
@@ -91,7 +114,7 @@ interface StagedFile {
 
 interface ValidationError {
   fileName: string;
-  reason: "ext";
+  reason: "ext" | "dup";
   detail: string;
 }
 
@@ -189,6 +212,7 @@ export default function Upload() {
   const [isDragging, setIsDragging] = useState(false);
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [selectedStation, setSelectedStation] = useState<StationOption | "">("");
+  const [hoveredStation, setHoveredStation] = useState<StationOption | "">("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [results, setResults] = useState<UploadResult[]>([]);
@@ -235,7 +259,6 @@ export default function Upload() {
           res.records.map((record) => ({
             id: record.uploadId,
             name: repairMojibakeText(record.fileName),
-            type: SENSOR_LABEL,
             size: formatSize(record.fileSize),
             status:
               record.uploadStatus === "completed"
@@ -244,7 +267,8 @@ export default function Upload() {
                   ? "failed"
                   : "processing",
             time: formatHistoryTime(record.createdAt),
-            user: user?.username ?? "admin",
+            user: record.username ?? user?.username ?? "admin",
+            station: formatStation(record.station),
           })),
         );
       })
@@ -277,7 +301,7 @@ export default function Upload() {
         if (isDuplicate) {
           errors.push({
             fileName: f.name,
-            reason: "ext",
+            reason: "dup",
             detail: "此檔案已在待上傳清單中",
           });
         } else {
@@ -345,11 +369,11 @@ export default function Upload() {
           {
             id: event.uploadId,
             name: repairMojibakeText(info.file.name),
-            type: SENSOR_LABEL,
             size: formatSize(info.file.size),
             status: "completed",
             time: timeStr,
             user: user?.username ?? "admin",
+            station: selectedStation || undefined,
           },
           ...prev,
         ]);
@@ -446,11 +470,11 @@ export default function Upload() {
               {
                 id: Date.now() + Math.random(),
                 name: repairMojibakeText(sf.file.name),
-                type: SENSOR_LABEL,
                 size: formatSize(sf.file.size),
                 status: "completed",
                 time: timeStr,
                 user: user?.username ?? "demo",
+                station: selectedStation || undefined,
               },
               ...prev,
             ]);
@@ -474,8 +498,14 @@ export default function Upload() {
       const response = await uploadService.uploadFiles(
         pending.map((sf) => sf.file),
         "uav",
-        "sensor",
         authToken,
+        {
+          collectionDate: new Date().toISOString().slice(0, 10),
+          locationDescription: STATION_DISTRICTS[selectedStation as StationOption] ?? selectedStation,
+          equipmentModel: "",
+          station: STATION_SLUGS[selectedStation as StationOption],
+          stationLabel: selectedStation,
+        },
       );
 
       const ids = response.uploadIds;
@@ -596,7 +626,7 @@ export default function Upload() {
 
     const data = selectedRows.map((r) => ({
       檔案名稱: r.name,
-      資料類型: r.type,
+      測站: r.station ?? "—",
       檔案大小: r.size,
       上傳者: r.user,
       上傳時間: r.time,
@@ -606,7 +636,7 @@ export default function Upload() {
     const ws = XLSX.utils.json_to_sheet(data);
 
     // 欄寬
-    ws["!cols"] = [40, 16, 12, 14, 18, 10].map((wch) => ({ wch }));
+    ws["!cols"] = [40, 10, 12, 14, 18, 10].map((wch) => ({ wch }));
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "上傳歷史");
@@ -668,8 +698,8 @@ export default function Upload() {
   const filteredHistory = history.filter((record) => {
     if (!normalizedHistoryKeyword) return true;
 
-    return [record.name, record.type, record.user].some((field) =>
-      field.toLowerCase().includes(normalizedHistoryKeyword),
+    return [record.name, record.user, record.station ?? ""].some(
+      (field) => field.toLowerCase().includes(normalizedHistoryKeyword),
     );
   });
 
@@ -716,18 +746,17 @@ export default function Upload() {
     ["2", "上傳檔案"],
     ["3", "上傳結果"],
   ];
-  const displayStep = step;
 
   return (
     <div>
-      <Header title="資料上傳" subtitle="感測器資料上傳管理" />
+      <Header title="資料上傳" subtitle="依測站上傳 UAV 檔案" />
 
       {/* Stepper */}
       <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 24 }}>
         {steps.map(([n, label], i) => {
           const num = Number(n);
-          const done = displayStep > num;
-          const active = displayStep === num;
+          const done = step > num;
+          const active = step === num;
           return (
             <div key={n} style={{ display: "flex", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -745,17 +774,176 @@ export default function Upload() {
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <div style={{ width: 40, height: 2, backgroundColor: displayStep > num ? "#6abe74" : "#e5e7eb", margin: "0 12px" }} />
+                <div style={{ width: 40, height: 2, backgroundColor: step > num ? "#6abe74" : "#e5e7eb", margin: "0 12px" }} />
               )}
             </div>
           );
         })}
       </div>
 
+      {/* ── Step 1: 選擇測站 ── */}
+      {step === 1 && (
+        <Card style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#374151", marginBottom: 4 }}>
+              選擇上傳測站
+            </div>
+            <div style={{ fontSize: 13, color: "#6b7280" }}>
+              請選擇這批檔案所屬測站
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gridTemplateRows: "repeat(3, auto)",
+              gridAutoFlow: "column",
+              gap: 10,
+            }}
+          >
+            {STATION_OPTIONS.map((station) => {
+              const active = selectedStation === station;
+              return (
+                <button
+                  key={station}
+                  type="button"
+                  onClick={() => setSelectedStation(station)}
+                  onMouseEnter={() => setHoveredStation(station)}
+                  onMouseLeave={() => setHoveredStation("")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    width: "100%",
+                    padding: "16px 20px",
+                    borderRadius: 12,
+                    border: active
+                      ? "2px solid #6abe74"
+                      : hoveredStation === station
+                        ? "1.5px solid rgba(106,190,116,0.5)"
+                        : "1.5px solid rgba(0,0,0,0.10)",
+                    backgroundColor: active
+                      ? "rgba(106,190,116,0.07)"
+                      : hoveredStation === station
+                        ? "rgba(106,190,116,0.03)"
+                        : "#fff",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "border-color 0.15s, background-color 0.15s",
+                    outline: "none",
+                  }}
+                >
+                  {/* Radio dot */}
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      border: `2px solid ${active ? "#6abe74" : "#d1d5db"}`,
+                      backgroundColor: active ? "#6abe74" : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {active && (
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          backgroundColor: "#fff",
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Station info */}
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: active ? "#1a4731" : "#374151",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {station}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        fontSize: 12,
+                        color: "#9ca3af",
+                      }}
+                    >
+                      <MapPin size={11} />
+                      <span>{STATION_DISTRICTS[station]}</span>
+                      <span>·</span>
+                      <span>空氣品質監測站</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
+            <button
+              onClick={() => setStep(2)}
+              disabled={!selectedStation}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "10px 24px",
+                borderRadius: 8,
+                border: "none",
+                backgroundColor: !selectedStation ? "#d1d5db" : "#6abe74",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: !selectedStation ? "not-allowed" : "pointer",
+                transition: "background-color 0.15s",
+              }}
+            >
+              下一步 <ChevronRight size={16} />
+            </button>
+          </div>
+        </Card>
+      )}
+
       {/* ── Step 2: 上傳檔案 ── */}
       {step === 2 && (
         <Card style={{ marginBottom: 20 }}>
-          {/* 資料類型說明列 */}
+          {/* 已選測站確認列 */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 10,
+              padding: "10px 14px",
+              backgroundColor: "rgba(106,190,116,0.08)",
+              borderRadius: 10,
+              border: "1px solid rgba(106,190,116,0.25)",
+              fontSize: 13,
+            }}
+          >
+            <MapPin size={14} color="#6abe74" style={{ flexShrink: 0 }} />
+            <span style={{ color: "#6b7280" }}>上傳至測站：</span>
+            <span style={{ fontWeight: 700, color: "#2d6a4f" }}>{selectedStation}</span>
+            <span style={{ color: "#9ca3af", fontSize: 12 }}>
+              （{STATION_DISTRICTS[selectedStation as StationOption]}）
+            </span>
+          </div>
+
+          {/* 檔案格式說明列 */}
           <div
             style={{
               display: "flex",
@@ -770,8 +958,6 @@ export default function Upload() {
               flexWrap: "wrap",
             }}
           >
-            <span style={{ fontWeight: 600, color: "#374151" }}>{SENSOR_LABEL}</span>
-            <span>·</span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <FileText size={11} />
               {ALLOWED_EXTS.join(", ")}
@@ -1335,149 +1521,6 @@ export default function Upload() {
         </Card>
       )}
 
-      {/* ── Step 1: 選擇測站 ── */}
-      {step === 1 && (
-        <Card style={{ marginBottom: 20 }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#374151", marginBottom: 4 }}>
-              選擇上傳測站
-            </div>
-            <div style={{ fontSize: 13, color: "#6b7280" }}>
-              請選擇這批檔案所屬測站
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gridTemplateRows: "repeat(3, auto)",
-              gridAutoFlow: "column",
-              gap: 10,
-            }}
-          >
-            {STATION_OPTIONS.map((station) => {
-              const active = selectedStation === station;
-              return (
-                <button
-                  key={station}
-                  type="button"
-                  onClick={() => setSelectedStation(station)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    width: "100%",
-                    padding: "16px 20px",
-                    borderRadius: 12,
-                    border: active
-                      ? "2px solid #6abe74"
-                      : "1.5px solid rgba(0,0,0,0.10)",
-                    backgroundColor: active
-                      ? "rgba(106,190,116,0.07)"
-                      : "#fff",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    transition: "border-color 0.15s, background-color 0.15s",
-                    outline: "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.borderColor = "rgba(106,190,116,0.5)";
-                      e.currentTarget.style.backgroundColor = "rgba(106,190,116,0.03)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.borderColor = "rgba(0,0,0,0.10)";
-                      e.currentTarget.style.backgroundColor = "#fff";
-                    }
-                  }}
-                >
-                  {/* Radio dot */}
-                  <div
-                    style={{
-                      flexShrink: 0,
-                      width: 22,
-                      height: 22,
-                      borderRadius: "50%",
-                      border: `2px solid ${active ? "#6abe74" : "#d1d5db"}`,
-                      backgroundColor: active ? "#6abe74" : "transparent",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {active && (
-                      <div
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          backgroundColor: "#fff",
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  {/* Station info */}
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 600,
-                        color: active ? "#1a4731" : "#374151",
-                        marginBottom: 4,
-                      }}
-                    >
-                      {station}
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 5,
-                        fontSize: 12,
-                        color: "#9ca3af",
-                      }}
-                    >
-                      <MapPin size={11} />
-                      <span>{STATION_DISTRICTS[station]}</span>
-                      <span>·</span>
-                      <span>空氣品質監測站</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 20 }}>
-            <button
-              onClick={() => setStep(2)}
-              disabled={!selectedStation}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "10px 24px",
-                borderRadius: 8,
-                border: "none",
-                backgroundColor: !selectedStation ? "#d1d5db" : "#6abe74",
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: !selectedStation ? "not-allowed" : "pointer",
-                transition: "background-color 0.15s",
-              }}
-            >
-              下一步 <ChevronRight size={16} />
-            </button>
-          </div>
-        </Card>
-      )}
-
       {/* ── Step 3: 上傳結果 ── */}
       {step === 3 && (
         <Card style={{ marginBottom: 20 }}>
@@ -1676,7 +1719,7 @@ export default function Upload() {
               type="text"
               value={historySearchKeyword}
               onChange={(e) => setHistorySearchKeyword(e.target.value)}
-              placeholder="搜尋檔案名稱、資料類型、上傳者"
+              placeholder="搜尋檔案名稱、上傳者、測站"
               style={historySearchInputStyle}
             />
             <div
@@ -1829,7 +1872,7 @@ export default function Upload() {
                 </th>
                 {[
                   "檔案名稱",
-                  "資料類型",
+                  "測站",
                   "檔案大小",
                   "上傳者",
                   "上傳時間",
@@ -1905,7 +1948,7 @@ export default function Upload() {
                       <td
                         style={{ padding: "12px", fontSize: 13, color: "#666" }}
                       >
-                        {r.type}
+                        {r.station ?? "—"}
                       </td>
                       <td
                         style={{ padding: "12px", fontSize: 13, color: "#666" }}

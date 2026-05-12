@@ -21,5 +21,17 @@ backend/uploads/**
 !backend/uploads/tmp/.gitkeep
 !backend/uploads/uav/
 !backend/uploads/uav/.gitkeep
+!backend/uploads/uav/taoyuan/
+!backend/uploads/uav/taoyuan/.gitkeep
+!backend/uploads/uav/dayuan/
+!backend/uploads/uav/dayuan/.gitkeep
+!backend/uploads/uav/guanyin/
+!backend/uploads/uav/guanyin/.gitkeep
+!backend/uploads/uav/pingzhen/
+!backend/uploads/uav/pingzhen/.gitkeep
+!backend/uploads/uav/longtan/
+!backend/uploads/uav/longtan/.gitkeep
+!backend/uploads/uav/zhongli/
+!backend/uploads/uav/zhongli/.gitkeep
 
 lidar_reference/

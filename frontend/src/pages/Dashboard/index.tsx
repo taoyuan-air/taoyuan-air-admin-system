@@ -14,14 +14,13 @@ function formatSize(bytes: number): string {
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const DATA_TYPE_LABELS: Record<string, string> = {
-  point_cloud: "點雲資料",
-  wind_field: "風場資料",
-  boundary_layer: "大氣邊界層",
-  sensor: "感測器資料",
-  flight_path: "飛行軌跡",
-  imagery: "影像資料",
-  meteorological: "氣象資料",
+const STATION_LABELS: Record<string, string> = {
+  taoyuan: "桃園",
+  dayuan: "大園",
+  guanyin: "觀音",
+  pingzhen: "平鎮",
+  longtan: "龍潭",
+  zhongli: "中壢",
 };
 
 export default function Dashboard() {
@@ -46,7 +45,6 @@ export default function Dashboard() {
         res.records.map((r) => ({
           id: r.uploadId,
           name: r.fileName,
-          type: DATA_TYPE_LABELS[r.dataType] ?? r.dataType,
           size: formatSize(r.fileSize),
           status:
             r.uploadStatus === "completed"
@@ -56,6 +54,7 @@ export default function Dashboard() {
                 : "processing",
           time: r.createdAt,
           user: r.fileName,
+          station: STATION_LABELS[r.station] ?? r.station,
         }))
       );
     }).catch(() => {});
@@ -216,7 +215,7 @@ export default function Dashboard() {
                     {u.name}
                   </div>
                   <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
-                    {u.type} · {u.size} · {u.time.slice(11, 16)}
+                    {u.station ?? "未指定測站"} · {u.size} · {u.time.slice(11, 16)}
                   </div>
                 </div>
                 <StatusBadge status={u.status} />

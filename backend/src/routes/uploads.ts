@@ -10,6 +10,7 @@ import {
 } from "../middlewares/auth";
 import {
   validateFileFormat,
+  validateStationSlug,
 } from "../modules/validator/fileValidator";
 import { FileUploadRepository } from "../repositories/fileUploadRepository";
 import { StorageService } from "../services/storageService";
@@ -18,7 +19,6 @@ import { logUploadAction } from "../modules/logger/auditLogger";
 import { ErrorCode } from "../shared/types/upload";
 import type {
   DataCategory,
-  DataType,
   UploadMetadata,
 } from "../shared/types/upload";
 
@@ -51,7 +51,6 @@ router.post(
     const user = req.user!;
     const files = req.files as Express.Multer.File[];
     const dataCategory = req.body.dataCategory as DataCategory;
-    const dataType = req.body.dataType as DataType;
     let metadata: UploadMetadata;
     try {
       metadata = req.body.metadata
@@ -60,9 +59,15 @@ router.post(
             collectionDate: new Date().toISOString().slice(0, 10),
             locationDescription: "",
             equipmentModel: "",
+            station: req.body.station,
           };
     } catch {
       res.status(400).json({ error: "INVALID_METADATA", message: "metadata 格式錯誤" });
+      return;
+    }
+
+    if (!validateStationSlug(metadata.station)) {
+      res.status(400).json({ error: "INVALID_STATION", message: "測站參數不合法" });
       return;
     }
 
@@ -78,7 +83,7 @@ router.post(
       detail: string;
     }[] = [];
     for (const f of files) {
-      const fmtResult = validateFileFormat(f.originalname, dataCategory, dataType);
+      const fmtResult = validateFileFormat(f.originalname, dataCategory);
       if (!fmtResult.valid) {
         validationErrors.push({
           fileName: f.originalname,
@@ -108,7 +113,7 @@ router.post(
         filePath: "",
         fileSize: f.size,
         dataCategory,
-        dataType,
+        station: metadata.station,
         metadata,
       });
 
@@ -129,7 +134,7 @@ router.post(
             f.path,
             f.originalname,
             dataCategory,
-            dataType,
+            metadata.station,
           );
 
           await FileUploadRepository.updateStatus(
@@ -335,7 +340,7 @@ router.get(
           : isAdmin && req.query.all === "true"
             ? undefined
             : user.userId,
-      dataType: req.query.dataType as string | undefined,
+      station: req.query.station as string | undefined,
       status: req.query.status as string | undefined,
       dateFrom: req.query.dateFrom as string | undefined,
       dateTo: req.query.dateTo as string | undefined,

@@ -45,7 +45,7 @@ export interface UploadRecord {
   fileName: string;
   fileSize: number;
   fileType: 'uav' | 'other';
-  dataType: string;
+  station?: string;
   uploadStatus: 'uploading' | 'completed' | 'failed' | 'processing';
   validationStatus: 'pending' | 'valid' | 'invalid';
   createdAt: string;

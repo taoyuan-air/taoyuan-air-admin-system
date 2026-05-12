@@ -32,10 +32,10 @@ const mockLogs: Record<string, { time: string; status: 'success' | 'error' | 'pe
     { time: '2026-04-01 07:25', status: 'success', message: '同步成功，取得 87 筆觀測資料' },
   ],
   '5': [
-    { time: '2026-04-01 08:28', status: 'success', message: '同步成功，取得 320 個感測器資料' },
-    { time: '2026-04-01 08:13', status: 'success', message: '同步成功，取得 318 個感測器資料' },
+    { time: '2026-04-01 08:28', status: 'success', message: '同步成功，取得 320 筆監測資料' },
+    { time: '2026-04-01 08:13', status: 'success', message: '同步成功，取得 318 筆監測資料' },
     { time: '2026-04-01 07:58', status: 'error',   message: 'JSON 解析錯誤：Unexpected token' },
-    { time: '2026-04-01 07:43', status: 'success', message: '同步成功，取得 315 個感測器資料' },
+    { time: '2026-04-01 07:43', status: 'success', message: '同步成功，取得 315 筆監測資料' },
   ],
 };
 

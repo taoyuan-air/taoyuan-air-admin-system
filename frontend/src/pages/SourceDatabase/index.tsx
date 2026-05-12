@@ -15,7 +15,8 @@ interface DbRecord {
   uploadId: number;
   fileName: string;
   dataCategory: string;
-  dataType: string;
+  dataType?: string;
+  station?: string;
   fileSize: number;
   uploadStatus: string;
   createdAt: string;
@@ -23,8 +24,16 @@ interface DbRecord {
 }
 
 const DATA_TYPE_LABELS: Record<string, string> = {
-  sensor: '感測器資料', flight_path: '飛行軌跡', imagery: '影像資料', meteorological: '氣象資料',
   hourly_obs: '逐時觀測',
+};
+
+const STATION_LABELS: Record<string, string> = {
+  taoyuan: '桃園',
+  dayuan: '大園',
+  guanyin: '觀音',
+  pingzhen: '平鎮',
+  longtan: '龍潭',
+  zhongli: '中壢',
 };
 
 function formatSize(bytes: number) {
@@ -44,7 +53,7 @@ function formatTime(value: string) {
 
 const MOCK_RECORDS: Record<string, DbRecord[]> = {
   uav: [
-    { uploadId: 2, fileName: 'uav_flight_20260401.csv', dataCategory: 'uav', dataType: 'sensor', fileSize: 12582912, uploadStatus: 'completed', createdAt: '2026-04-01T08:15:00', username: 'partner01' },
+    { uploadId: 2, fileName: 'uav_flight_20260401.csv', dataCategory: 'uav', station: 'taoyuan', fileSize: 12582912, uploadStatus: 'completed', createdAt: '2026-04-01T08:15:00', username: 'partner01' },
   ],
   naqo: [
     { uploadId: 101, fileName: 'NAQO_20260401_08.json', dataCategory: 'naqo', dataType: 'hourly_obs', fileSize: 4096, uploadStatus: 'completed', createdAt: '2026-04-01T08:05:00', username: 'sftp' },
@@ -147,7 +156,9 @@ export default function SourceDatabase() {
   const filtered = allRecords.filter(r => {
     if (!keyword.trim()) return true;
     const kw = keyword.trim().toLowerCase();
-    return [r.fileName, DATA_TYPE_LABELS[r.dataType] ?? r.dataType, r.username ?? ''].some(f => f.toLowerCase().includes(kw));
+    const stationLabel = STATION_LABELS[r.station ?? ''] ?? r.station ?? '';
+    const typeLabel = r.dataType ? DATA_TYPE_LABELS[r.dataType] ?? r.dataType : '';
+    return [r.fileName, stationLabel, typeLabel, r.username ?? ''].some(f => f.toLowerCase().includes(kw));
   });
 
   const totalPages = pageSize === 'All' ? 1 : Math.max(1, Math.ceil(filtered.length / (pageSize as number)));
@@ -204,7 +215,9 @@ export default function SourceDatabase() {
       .filter(r => selectedIds.has(r.uploadId))
       .map(r => ({
         檔案名稱: r.fileName,
-        資料類型: DATA_TYPE_LABELS[r.dataType] ?? r.dataType,
+        ...(isSftp
+          ? { 資料類型: r.dataType ? DATA_TYPE_LABELS[r.dataType] ?? r.dataType : '-' }
+          : { 測站: STATION_LABELS[r.station ?? ''] ?? r.station ?? '-' }),
         檔案大小: formatSize(r.fileSize),
         上傳者: r.username ?? '-',
         上傳時間: formatTime(r.createdAt),
@@ -261,7 +274,7 @@ export default function SourceDatabase() {
               <input
                 value={keyword}
                 onChange={e => setKeyword(e.target.value)}
-                placeholder="搜尋檔名、類型、上傳者"
+                placeholder={isSftp ? "搜尋檔名、類型、上傳者" : "搜尋檔名、測站、上傳者"}
                 style={{
                   paddingLeft: 30, paddingRight: 12, paddingTop: 9, paddingBottom: 9,
                   borderRadius: 8, border: '1px solid rgba(0,0,0,0.12)',
@@ -341,7 +354,7 @@ export default function SourceDatabase() {
                       className="custom-checkbox"
                     />
                   </th>
-                  {['檔案名稱', '資料類型', '檔案大小', isSftp ? '來源' : '上傳者', '上傳時間', '狀態'].map(h => (
+                  {['檔案名稱', isSftp ? '資料類型' : '測站', '檔案大小', isSftp ? '來源' : '上傳者', '上傳時間', '狀態'].map(h => (
                     <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, color: '#999', fontWeight: 600 }}>{h}</th>
                   ))}
                 </tr>
@@ -372,7 +385,13 @@ export default function SourceDatabase() {
                         />
                       </td>
                       <td style={{ padding: '12px', fontSize: 13, color: '#374151', fontWeight: 500 }}>{r.fileName}</td>
-                      <td style={{ padding: '12px', fontSize: 13, color: '#666' }}>{DATA_TYPE_LABELS[r.dataType] ?? r.dataType}</td>
+                      <td style={{ padding: '12px', fontSize: 13, color: '#666' }}>
+                        {isSftp
+                          ? r.dataType
+                            ? DATA_TYPE_LABELS[r.dataType] ?? r.dataType
+                            : '-'
+                          : STATION_LABELS[r.station ?? ''] ?? r.station ?? '-'}
+                      </td>
                       <td style={{ padding: '12px', fontSize: 13, color: '#666' }}>{formatSize(r.fileSize)}</td>
                       <td style={{ padding: '12px', fontSize: 13, color: '#666' }}>{r.username ?? '-'}</td>
                       <td style={{ padding: '12px', fontSize: 13, color: '#666' }}>{formatTime(r.createdAt)}</td>

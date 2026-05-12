@@ -13,7 +13,7 @@ import { isDemoMode } from "../config/api";
 export interface HistoryRow {
   id: number;
   name: string;
-  type: string;
+  station?: string;
   size: string;
   status: "completed" | "processing" | "failed";
   time: string;
@@ -41,12 +41,17 @@ function formatSize(bytes: number): string {
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const DATA_TYPE_LABELS: Record<string, string> = {
-  sensor: "感測器資料",
+const STATION_LABELS: Record<string, string> = {
+  taoyuan: "桃園",
+  dayuan: "大園",
+  guanyin: "觀音",
+  pingzhen: "平鎮",
+  longtan: "龍潭",
+  zhongli: "中壢",
 };
 
-function getTypeLabel(_category: string, dataType: string): string {
-  return DATA_TYPE_LABELS[dataType] ?? dataType;
+function getStationLabel(station?: string): string | undefined {
+  return station ? STATION_LABELS[station] ?? station : undefined;
 }
 
 function repairMojibake(value: string): string {
@@ -131,7 +136,7 @@ export function useHistoryTable({
         res.records.map((r) => ({
           id: r.uploadId,
           name: repairMojibake(r.fileName),
-          type: getTypeLabel(r.dataCategory, r.dataType),
+          station: getStationLabel(r.station),
           size: formatSize(r.fileSize),
           status:
             r.uploadStatus === "completed"
@@ -254,7 +259,7 @@ export function useHistoryTable({
         const kw = keyword.trim().toLowerCase();
         const filtered = kw
           ? rows.filter((r) =>
-              [r.name, r.type, r.user].some((f) =>
+            [r.name, r.station ?? "", r.user].some((f) =>
                 f.toLowerCase().includes(kw),
               ),
             )

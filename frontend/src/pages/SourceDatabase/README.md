@@ -58,7 +58,6 @@ Response：
 
 | `dataType`       | 說明       |
 | ---------------- | ---------- |
-| `sensor`         | 感測器資料 |
 | `flight_path`    | 飛行軌跡   |
 | `imagery`        | 影像資料   |
 | `meteorological` | 氣象資料   |

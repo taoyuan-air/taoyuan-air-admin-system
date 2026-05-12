@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS file_uploads (
     file_path         VARCHAR(500) NOT NULL,
     file_size         BIGINT NOT NULL,
     data_category     VARCHAR(20) NOT NULL CHECK (data_category IN ('uav')),
-    data_type         VARCHAR(50) NOT NULL,
+    station           VARCHAR(50) NOT NULL,
     upload_status     VARCHAR(20) NOT NULL DEFAULT 'uploading'
                         CHECK (upload_status IN ('uploading', 'completed', 'failed', 'cancelled')),
     validation_status VARCHAR(20) NOT NULL DEFAULT 'pending'
@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS file_uploads (
 );
 
 CREATE INDEX IF NOT EXISTS idx_file_uploads_user_id      ON file_uploads(user_id);
-CREATE INDEX IF NOT EXISTS idx_file_uploads_data_type    ON file_uploads(data_type);
 CREATE INDEX IF NOT EXISTS idx_file_uploads_upload_status ON file_uploads(upload_status);
 CREATE INDEX IF NOT EXISTS idx_file_uploads_created_at   ON file_uploads(created_at DESC);
 

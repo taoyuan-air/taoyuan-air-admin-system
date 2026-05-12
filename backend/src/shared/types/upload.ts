@@ -1,7 +1,11 @@
 export type DataCategory = 'uav';
-
-export type UAVDataType = 'sensor';
-export type DataType = UAVDataType;
+export type StationSlug =
+  | 'taoyuan'
+  | 'dayuan'
+  | 'guanyin'
+  | 'pingzhen'
+  | 'longtan'
+  | 'zhongli';
 
 export type UploadStatus = 'uploading' | 'completed' | 'failed' | 'cancelled';
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
@@ -17,6 +21,8 @@ export interface UploadMetadata {
   collectionDate: string;       // ISO 8601 日期
   locationDescription: string;
   equipmentModel: string;
+  station: StationSlug;
+  stationLabel?: string;
   notes?: string;
 }
 
@@ -27,7 +33,7 @@ export interface FileUploadRecord {
   filePath: string;
   fileSize: number;
   dataCategory: DataCategory;
-  dataType: DataType;
+  station: StationSlug;
   uploadStatus: UploadStatus;
   validationStatus: ValidationStatus;
   validationErrors?: object;

@@ -2,7 +2,7 @@ import { pool } from "../db/pool";
 import type {
   FileUploadRecord,
   DataCategory,
-  DataType,
+  StationSlug,
   UploadStatus,
   ValidationStatus,
   UploadMetadata,
@@ -14,14 +14,14 @@ interface CreateUploadInput {
   filePath: string;
   fileSize: number;
   dataCategory: DataCategory;
-  dataType: DataType;
+  station: StationSlug;
   metadata?: UploadMetadata;
 }
 
 interface HistoryFilter {
   userId?: number;
   dataCategory?: string;
-  dataType?: string;
+  station?: string;
   status?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -37,7 +37,7 @@ function toRecord(row: Record<string, unknown>): FileUploadRecord {
     filePath: row.file_path as string,
     fileSize: row.file_size as number,
     dataCategory: row.data_category as DataCategory,
-    dataType: row.data_type as DataType,
+    station: row.station as StationSlug,
     uploadStatus: row.upload_status as UploadStatus,
     validationStatus: row.validation_status as ValidationStatus,
     validationErrors: row.validation_errors as object | undefined,
@@ -51,7 +51,7 @@ export const FileUploadRepository = {
   async create(input: CreateUploadInput): Promise<FileUploadRecord> {
     const { rows } = await pool.query(
       `INSERT INTO file_uploads
-         (user_id, file_name, file_path, file_size, data_category, data_type, metadata)
+         (user_id, file_name, file_path, file_size, data_category, station, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
@@ -60,7 +60,7 @@ export const FileUploadRepository = {
         input.filePath,
         input.fileSize,
         input.dataCategory,
-        input.dataType,
+        input.station,
         input.metadata ? JSON.stringify(input.metadata) : null,
       ],
     );
@@ -132,9 +132,9 @@ export const FileUploadRepository = {
       conditions.push(`fu.data_category = $${idx++}`);
       params.push(filter.dataCategory);
     }
-    if (filter.dataType) {
-      conditions.push(`fu.data_type = $${idx++}`);
-      params.push(filter.dataType);
+    if (filter.station) {
+      conditions.push(`fu.station = $${idx++}`);
+      params.push(filter.station);
     }
     if (filter.status) {
       conditions.push(`fu.upload_status = $${idx++}`);
