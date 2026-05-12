@@ -3,7 +3,11 @@ import fs from "fs";
 import path from "path";
 
 const STATION_ID = "NAQO_NCU";
-const SFTP_NAQO_DIR = path.join(process.env.UPLOAD_DIR ?? "uploads", "sftp", "naqo");
+const DEFAULT_UPLOAD_DIR = path.resolve(__dirname, "..", "..", "uploads");
+const UPLOAD_DIR = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : DEFAULT_UPLOAD_DIR;
+const SFTP_NAQO_DIR = path.join(UPLOAD_DIR, "sftp", "naqo");
 
 interface NaqoRecord {
   日期時間: string;

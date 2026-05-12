@@ -7,11 +7,19 @@ frontend/node_modules/
 
 # Keep uploads folder structure, but ignore uploaded file contents
 backend/uploads/**
+!backend/uploads/
 !backend/uploads/.gitkeep
-!backend/uploads/lidar/.gitkeep
-!backend/uploads/uav/.gitkeep
-!backend/uploads/tmp/.gitkeep
+!backend/uploads/sftp/
 !backend/uploads/sftp/.gitkeep
+!backend/uploads/sftp/lidar/
+!backend/uploads/sftp/lidar/.gitkeep
+!backend/uploads/sftp/mpl/
+!backend/uploads/sftp/mpl/.gitkeep
+!backend/uploads/sftp/naqo/
 !backend/uploads/sftp/naqo/.gitkeep
+!backend/uploads/tmp/
+!backend/uploads/tmp/.gitkeep
+!backend/uploads/uav/
+!backend/uploads/uav/.gitkeep
 
 lidar_reference/
