@@ -13,3 +13,5 @@ backend/uploads/**
 !backend/uploads/tmp/.gitkeep
 !backend/uploads/sftp/.gitkeep
 !backend/uploads/sftp/naqo/.gitkeep
+
+lidar_reference/
