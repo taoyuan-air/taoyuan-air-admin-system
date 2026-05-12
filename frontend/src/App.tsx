@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppDataProvider } from './contexts/AppDataContext';
@@ -13,6 +13,9 @@ import Users from './pages/Users';
 import ChangePasswordPage from './pages/ChangePassword';
 import LoginPage from './pages/Login';
 import type { RoleCode } from './types';
+
+// Lazy-load to avoid pulling the heavy Plotly bundle into the main chunk
+const LidarPage = lazy(() => import('./pages/Lidar'));
 
 const ROUTE_ROLES: Record<string, RoleCode[]> = {
   '/upload': ['system_admin', 'data_manager'],
@@ -75,6 +78,11 @@ function AppContent() {
           <Route path="/upload" element={<GuardedRoute path="/upload" element={<Upload />} />} />
           <Route path="/data-sources" element={<DataSources />} />
           <Route path="/source-db/:category" element={<SourceDatabase />} />
+          <Route path="/lidar" element={
+            <Suspense fallback={<div style={{ padding: 32, color: '#6b7280' }}>載入中…</div>}>
+              <LidarPage />
+            </Suspense>
+          } />
           <Route path="/stations" element={<Stations />} />
           <Route path="/users" element={<GuardedRoute path="/users" element={<Users />} />} />
         </Routes>
