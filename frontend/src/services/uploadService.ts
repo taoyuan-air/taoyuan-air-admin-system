@@ -6,9 +6,9 @@ function authHeaders(token: string): HeadersInit {
 
 function asNetworkError(err: unknown): Error {
   if (err instanceof TypeError) {
-    return new Error("無法連線到後端 API，請確認 backend 已啟動且可存取。");
+    return new Error("無法連線到 backend API，請確認後端服務是否已啟動。");
   }
-  return err instanceof Error ? err : new Error("網路連線異常");
+  return err instanceof Error ? err : new Error("網路請求失敗");
 }
 
 async function parseJsonSafe<T>(res: Response): Promise<T | null> {
@@ -41,7 +41,6 @@ export interface HistoryRecord {
   station: string;
   uploadStatus: string;
   validationStatus: string;
-  metadata?: object;
   createdAt: string;
   username?: string;
 }
@@ -56,14 +55,12 @@ export interface HistoryResponse {
 export const uploadService = {
   async uploadFiles(
     files: File[],
-    dataCategory: string,
     token: string,
-    metadata?: object,
+    station: string,
   ): Promise<UploadResponse> {
     const form = new FormData();
     files.forEach((f) => form.append("files", f));
-    form.append("dataCategory", dataCategory);
-    if (metadata) form.append("metadata", JSON.stringify(metadata));
+    form.append("station", station);
 
     let res: Response;
     try {
@@ -81,7 +78,6 @@ export const uploadService = {
         message?: string;
         details?: UploadValidationError[];
       }>(res);
-      // 驗證失敗時把 details 帶出來
       const err = new Error(
         body?.message ?? `上傳失敗 (${res.status})`,
       ) as Error & { details?: UploadValidationError[] };
@@ -90,7 +86,7 @@ export const uploadService = {
     }
 
     const data = await parseJsonSafe<UploadResponse>(res);
-    if (!data) throw new Error("後端回應格式錯誤：未收到 JSON 資料");
+    if (!data) throw new Error("後端回傳格式錯誤，無法解析 JSON。");
     return data;
   },
 
@@ -135,9 +131,9 @@ export const uploadService = {
     } catch (err) {
       throw asNetworkError(err);
     }
-    if (!res.ok) throw new Error("無法取得歷史記錄");
+    if (!res.ok) throw new Error("無法取得上傳歷史記錄");
     const data = await parseJsonSafe<HistoryResponse>(res);
-    if (!data) throw new Error("後端回應格式錯誤：歷史記錄不是 JSON");
+    if (!data) throw new Error("後端回傳格式錯誤，無法解析歷史記錄 JSON。");
     return data;
   },
 };

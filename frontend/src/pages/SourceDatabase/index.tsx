@@ -135,7 +135,7 @@ export default function SourceDatabase() {
       const isSftpCategory = ['naqo', 'windlidar', 'mpl'].includes(category);
       const url = isSftpCategory
         ? apiUrl(`/api/sftp/records/${category}?page=1&limit=9999`)
-        : apiUrl(`/api/uploads/by-category/${category}?page=1&limit=9999`);
+        : apiUrl('/api/uploads/history?all=true&page=1&limit=9999');
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -183,7 +183,15 @@ export default function SourceDatabase() {
   };
 
   const toggleOne = (id: number) => {
-    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) {
+        n.delete(id);
+      } else {
+        n.add(id);
+      }
+      return n;
+    });
   };
 
   const handleDelete = async () => {

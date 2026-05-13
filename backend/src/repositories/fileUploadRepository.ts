@@ -5,7 +5,6 @@ import type {
   StationSlug,
   UploadStatus,
   ValidationStatus,
-  UploadMetadata,
 } from "../shared/types/upload";
 
 interface CreateUploadInput {
@@ -15,12 +14,10 @@ interface CreateUploadInput {
   fileSize: number;
   dataCategory: DataCategory;
   station: StationSlug;
-  metadata?: UploadMetadata;
 }
 
 interface HistoryFilter {
   userId?: number;
-  dataCategory?: string;
   station?: string;
   status?: string;
   dateFrom?: string;
@@ -41,7 +38,6 @@ function toRecord(row: Record<string, unknown>): FileUploadRecord {
     uploadStatus: row.upload_status as UploadStatus,
     validationStatus: row.validation_status as ValidationStatus,
     validationErrors: row.validation_errors as object | undefined,
-    metadata: row.metadata as UploadMetadata | undefined,
     createdAt: row.created_at as Date,
     processedAt: row.processed_at as Date | undefined,
   };
@@ -51,8 +47,8 @@ export const FileUploadRepository = {
   async create(input: CreateUploadInput): Promise<FileUploadRecord> {
     const { rows } = await pool.query(
       `INSERT INTO file_uploads
-         (user_id, file_name, file_path, file_size, data_category, station, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (user_id, file_name, file_path, file_size, data_category, station)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
         input.userId,
@@ -61,7 +57,6 @@ export const FileUploadRepository = {
         input.fileSize,
         input.dataCategory,
         input.station,
-        input.metadata ? JSON.stringify(input.metadata) : null,
       ],
     );
     return toRecord(rows[0]);
@@ -127,10 +122,6 @@ export const FileUploadRepository = {
     if (filter.userId !== undefined) {
       conditions.push(`fu.user_id = $${idx++}`);
       params.push(filter.userId);
-    }
-    if (filter.dataCategory) {
-      conditions.push(`fu.data_category = $${idx++}`);
-      params.push(filter.dataCategory);
     }
     if (filter.station) {
       conditions.push(`fu.station = $${idx++}`);

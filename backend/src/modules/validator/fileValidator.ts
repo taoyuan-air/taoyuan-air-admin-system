@@ -1,6 +1,7 @@
 import path from 'path';
-import { UPLOAD_CONFIG } from '../../shared/config/uploadConfig';
-import type { DataCategory, StationSlug, ValidationResult } from '../../shared/types/upload';
+import type { StationSlug, ValidationResult } from '../../shared/types/upload';
+
+const UAV_FORMATS = ['.txt', '.csv'] as const;
 
 const STATION_SLUGS = new Set<StationSlug>([
   'taoyuan',
@@ -11,22 +12,14 @@ const STATION_SLUGS = new Set<StationSlug>([
   'zhongli',
 ]);
 
-function getConfig(dataCategory: DataCategory) {
-  return UPLOAD_CONFIG[dataCategory] ?? null;
-}
-
 export function validateFileFormat(
   fileName: string,
-  dataCategory: DataCategory,
 ): ValidationResult {
-  const config = getConfig(dataCategory);
-  if (!config) return { valid: false, error: `未知的資料分類：${dataCategory}` };
-
   const ext = path.extname(fileName).toLowerCase();
-  if (!(config.formats as readonly string[]).includes(ext)) {
+  if (!(UAV_FORMATS as readonly string[]).includes(ext)) {
     return {
       valid: false,
-      error: `不支援的格式（${ext}），${dataCategory} 僅接受 ${config.formats.join(', ')}`,
+      error: `不支援的格式（${ext}），UAV 僅接受 ${UAV_FORMATS.join(', ')}`,
     };
   }
   return { valid: true };

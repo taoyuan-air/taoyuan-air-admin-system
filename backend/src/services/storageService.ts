@@ -1,10 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import type { DataCategory, StationSlug } from '../shared/types/upload';
+import type { StationSlug } from '../shared/types/upload';
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');
 
-const ALLOWED_CATEGORIES = new Set(['uav']);
 const ALLOWED_STATIONS = new Set<StationSlug>([
   'taoyuan',
   'dayuan',
@@ -18,13 +17,12 @@ export const StorageService = {
   async saveFile(
     tempPath: string,
     originalName: string,
-    dataCategory: DataCategory,
     station: StationSlug,
   ): Promise<string> {
-    if (!ALLOWED_CATEGORIES.has(dataCategory) || !ALLOWED_STATIONS.has(station)) {
-      throw new Error(`不允許的 dataCategory 或 station: ${dataCategory}/${station}`);
+    if (!ALLOWED_STATIONS.has(station)) {
+      throw new Error(`不允許的 station: ${station}`);
     }
-    const destDir = path.join(UPLOAD_DIR, dataCategory, station);
+    const destDir = path.join(UPLOAD_DIR, 'uav', station);
     fs.mkdirSync(destDir, { recursive: true });
 
     const timestamp = Date.now();

@@ -497,15 +497,8 @@ export default function Upload() {
     try {
       const response = await uploadService.uploadFiles(
         pending.map((sf) => sf.file),
-        "uav",
         authToken,
-        {
-          collectionDate: new Date().toISOString().slice(0, 10),
-          locationDescription: STATION_DISTRICTS[selectedStation as StationOption] ?? selectedStation,
-          equipmentModel: "",
-          station: STATION_SLUGS[selectedStation as StationOption],
-          stationLabel: selectedStation,
-        },
+        STATION_SLUGS[selectedStation as StationOption],
       );
 
       const ids = response.uploadIds;

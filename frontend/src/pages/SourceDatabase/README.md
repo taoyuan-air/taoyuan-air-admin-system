@@ -19,7 +19,7 @@
 
 | 方法   | 路徑                                              | 權限   | 說明                     |
 | ------ | ------------------------------------------------- | ------ | ------------------------ |
-| GET    | `/api/uploads/by-category/:category`              | 需登入 | 依類別查詢上傳記錄       |
+| GET    | `/api/uploads/history?all=true&page=1&limit=9999` | 需登入 | 查詢 UAV 上傳記錄         |
 | DELETE | `/api/uploads/history/:uploadId`                  | 需登入 | 刪除單筆記錄與實體檔案   |
 
 Query string：`?page=1&limit=9999`

@@ -17,12 +17,10 @@ import { StorageService } from "../services/storageService";
 import { ProgressService } from "../services/progressService";
 import { logUploadAction } from "../modules/logger/auditLogger";
 import { ErrorCode } from "../shared/types/upload";
-import type {
-  DataCategory,
-  UploadMetadata,
-} from "../shared/types/upload";
+import type { DataCategory } from "../shared/types/upload";
 
 const router = Router();
+const DATA_CATEGORY: DataCategory = "uav";
 
 // multer 暫存至 uploads/tmp
 const tmpDir = path.join(process.env.UPLOAD_DIR ?? "uploads", "tmp");
@@ -50,23 +48,9 @@ router.post(
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user!;
     const files = req.files as Express.Multer.File[];
-    const dataCategory = req.body.dataCategory as DataCategory;
-    let metadata: UploadMetadata;
-    try {
-      metadata = req.body.metadata
-        ? JSON.parse(req.body.metadata)
-        : {
-            collectionDate: new Date().toISOString().slice(0, 10),
-            locationDescription: "",
-            equipmentModel: "",
-            station: req.body.station,
-          };
-    } catch {
-      res.status(400).json({ error: "INVALID_METADATA", message: "metadata 格式錯誤" });
-      return;
-    }
+    const station = req.body.station as string | undefined;
 
-    if (!validateStationSlug(metadata.station)) {
+    if (!validateStationSlug(station)) {
       res.status(400).json({ error: "INVALID_STATION", message: "測站參數不合法" });
       return;
     }
@@ -83,7 +67,7 @@ router.post(
       detail: string;
     }[] = [];
     for (const f of files) {
-      const fmtResult = validateFileFormat(f.originalname, dataCategory);
+      const fmtResult = validateFileFormat(f.originalname);
       if (!fmtResult.valid) {
         validationErrors.push({
           fileName: f.originalname,
@@ -112,9 +96,8 @@ router.post(
         fileName: f.originalname,
         filePath: "",
         fileSize: f.size,
-        dataCategory,
-        station: metadata.station,
-        metadata,
+        dataCategory: DATA_CATEGORY,
+        station,
       });
 
       uploadIds.push(record.uploadId);
@@ -133,8 +116,7 @@ router.post(
           const filePath = await StorageService.saveFile(
             f.path,
             f.originalname,
-            dataCategory,
-            metadata.station,
+            station,
           );
 
           await FileUploadRepository.updateStatus(
@@ -312,32 +294,20 @@ router.delete(
   },
 );
 
-// GET /api/uploads/by-category/:category
-router.get(
-  "/by-category/:category",
-  authenticateJWT,
-  async (req: Request, res: Response): Promise<void> => {
-    const category = req.params.category;
-    const page  = req.query.page  ? parseInt(req.query.page  as string, 10) : 1;
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-    const result = await FileUploadRepository.findAll({ dataCategory: category, page, limit });
-    res.json({ total: result.total, page, limit, records: result.records });
-  },
-);
-
 // GET /api/uploads/history
 router.get(
   "/history",
   authenticateJWT,
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user!;
-    const isAdmin = user.roleCode === "system_admin";
+    const canViewAll =
+      user.roleCode === "system_admin" || user.roleCode === "data_manager";
 
     const filter = {
       userId:
-        isAdmin && req.query.userId
+        canViewAll && req.query.userId
           ? parseInt(req.query.userId as string, 10)
-          : isAdmin && req.query.all === "true"
+          : canViewAll && req.query.all === "true"
             ? undefined
             : user.userId,
       station: req.query.station as string | undefined,

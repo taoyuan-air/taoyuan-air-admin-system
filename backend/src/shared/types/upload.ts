@@ -17,15 +17,6 @@ export const UPLOAD_ALLOWED_ROLES: RoleCode[] = [
   'data_manager',
 ];
 
-export interface UploadMetadata {
-  collectionDate: string;       // ISO 8601 日期
-  locationDescription: string;
-  equipmentModel: string;
-  station: StationSlug;
-  stationLabel?: string;
-  notes?: string;
-}
-
 export interface FileUploadRecord {
   uploadId: number;
   userId: number;
@@ -37,7 +28,6 @@ export interface FileUploadRecord {
   uploadStatus: UploadStatus;
   validationStatus: ValidationStatus;
   validationErrors?: object;
-  metadata?: UploadMetadata;
   createdAt: Date;
   processedAt?: Date;
 }
