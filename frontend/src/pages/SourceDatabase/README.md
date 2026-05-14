@@ -81,6 +81,18 @@ Response：
 
 ---
 
+## 檔案分工
+
+| 檔案 | 說明 |
+| ---- | ---- |
+| `index.tsx` | 頁面資料流程、路由參數、API 請求、篩選/分頁/選取狀態，以及匯出與刪除操作 |
+| `sourceDatabaseHelpers.ts` | `DbRecord` / `PageSizeOption` 型別、mock records、label map、React Select 樣式、格式化與狀態轉換 helper |
+| `SourceDatabaseToolbar.tsx` | 搜尋、每頁筆數選擇、批次操作列 |
+| `SourceDatabaseTable.tsx` | 記錄表格、checkbox 選取、空狀態、載入狀態與分頁控制 |
+| `SourceDatabaseDialogs.tsx` | 匯出 Excel 與批次刪除確認 Dialog |
+
+---
+
 ## 資料庫查詢參考
 
 ```sql

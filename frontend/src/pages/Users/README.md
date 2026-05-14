@@ -2,6 +2,25 @@
 
 帳號管理、角色權限與上傳配額設定，僅 `system_admin` 可存取。
 
+## 前端檔案結構
+
+Users 頁面已依功能區塊拆分，`index.tsx` 保留使用者資料流、API 呼叫與 modal 狀態，其餘 UI 區塊放在同層檔案。
+
+| 檔案 | 職責 |
+| ---- | ---- |
+| `index.tsx` | 頁面容器。管理使用者列表、角色篩選、新增/編輯/停用/刪除流程與 modal 狀態。 |
+| `userHelpers.ts` | `UserRow` 型別、角色設定、表單預設值、select/input style、驗證與格式化函式。 |
+| `UserTable.tsx` | 使用者表格、角色 badge、狀態顯示、編輯/啟用停用/刪除按鈕。 |
+| `UserFormModal.tsx` | 新增與編輯使用者 Modal。 |
+| `TempPasswordModal.tsx` | 顯示新帳號的臨時密碼與複製按鈕。 |
+| `DeleteUserDialog.tsx` | 刪除使用者確認 Dialog。 |
+
+### 拆分原則
+
+- `index.tsx` 負責 API 與資料更新，不直接堆疊大型 JSX 區塊。
+- 區塊元件只透過 props 接收狀態與 callback，不直接呼叫 API。
+- 共用角色設定、表單型別與格式化工具集中在 `userHelpers.ts`。
+
 ## 相關 API
 
 | 方法   | 路徑                    | 說明                   |

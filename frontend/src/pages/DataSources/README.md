@@ -13,12 +13,25 @@
 
 | 檔案 | 說明 |
 | ---- | ---- |
-| `index.tsx` | 資料來源管理主頁，負責子頁切換、資料來源卡片、資料來源表單、同步日誌與 SFTP 傳輸記錄 Modal |
+| `index.tsx` | 資料來源管理主頁容器，負責子頁切換、資料來源 state、新增/編輯流程、SFTP 最後同步與傳輸記錄載入 |
+| `dataSourceHelpers.ts` | 資料來源表單型別、mock logs、來源類型選項、表單驗證、共用 style 與資料庫分類工具 |
+| `DataSourceTabs.tsx` | 「資料來源設定 / 傳輸異常事件」子頁切換 |
+| `DataSourceCards.tsx` | 資料來源卡片列表、測試連線、瀏覽資料庫、傳輸記錄、編輯與同步日誌入口 |
+| `DataSourceFormModal.tsx` | 新增 / 編輯資料來源 Modal |
+| `SyncLogModal.tsx` | 一般資料來源同步日誌 Modal |
+| `SftpLogModal.tsx` | SFTP 傳輸記錄 Modal |
 | `IncidentLogSection.tsx` | 傳輸異常事件子頁，包含新增事件按鈕、分析區塊、事件列表、分頁與事件詳情 Modal |
 | `IncidentAnalyticsSection.tsx` | 異常事件分析區塊，負責事件統計、篩選、圖表與規則式報告摘要 |
 | `IncidentFormModal.tsx` | 新增 / 編輯異常事件表單 |
 | `IncidentDetailModal.tsx` | 異常事件詳情 Modal，支援編輯與標記已恢復 |
 | `incidentTypes.ts` | SFTP 異常事件型別、選項、格式化工具 |
+
+### 拆分原則
+
+- `index.tsx` 負責資料流、API 呼叫與 modal 開關，不直接堆疊大型 UI 區塊。
+- 資料來源卡片、Tabs 與 Modal 只透過 props 接收狀態與 callback，不直接呼叫 API。
+- 資料來源管理和異常事件管理維持分區，避免 incident 相關邏輯混回資料來源卡片列表。
+- 共用 mock data、表單型別、表單驗證與格式化工具集中在 `dataSourceHelpers.ts`。
 
 ---
 
