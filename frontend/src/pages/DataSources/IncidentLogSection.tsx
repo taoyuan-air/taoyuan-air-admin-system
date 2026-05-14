@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { AlertTriangle, Plus, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import Select from 'react-select';
@@ -7,6 +7,7 @@ import DatePicker from '../../components/DatePicker';
 import IncidentFormModal from './IncidentFormModal';
 import IncidentDetailModal from './IncidentDetailModal';
 import IncidentAnalyticsSection from './IncidentAnalyticsSection';
+import { apiUrl, isDemoMode } from '../../config/api';
 import {
   INCIDENT_TYPE_OPTIONS,
   SOURCE_COLORS,
@@ -17,7 +18,7 @@ import {
 import type { CSSProperties } from 'react';
 import type { SftpIncident } from './incidentTypes';
 
-// ── Mock data ──────────────────────────────────────────────────────
+// ── Demo / fallback mock data ──────────────────────────────────────
 const MOCK_INCIDENTS: SftpIncident[] = [
   {
     id: 1,
@@ -141,7 +142,9 @@ const thStyle: CSSProperties = {
 };
 
 export default function IncidentLogSection() {
-  const [incidents, setIncidents] = useState<SftpIncident[]>(MOCK_INCIDENTS);
+  const [incidents, setIncidents] = useState<SftpIncident[]>(isDemoMode ? MOCK_INCIDENTS : []);
+  const [loading, setLoading]     = useState(!isDemoMode);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Filters (null/'' = show all)
   const [filterSource,   setFilterSource]   = useState<string | null>(null);
@@ -164,6 +167,25 @@ export default function IncidentLogSection() {
   const [editTarget, setEditTarget] = useState<SftpIncident | null>(null);
   const [detailItem, setDetailItem] = useState<SftpIncident | null>(null);
 
+  // ── Load from API ─────────────────────────────────────────────
+  useEffect(() => {
+    if (isDemoMode) return;
+    let cancelled = false;
+    const token = sessionStorage.getItem('auth_token');
+    setLoading(true);
+    fetch(apiUrl('/api/incidents?limit=200'), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then((data: { incidents: SftpIncident[] }) => {
+        if (cancelled) return;
+        setIncidents(data.incidents ?? []);
+      })
+      .catch(() => { if (!cancelled) setIncidents([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
   // ── Filtering ──────────────────────────────────────────────────
   const filtered = incidents.filter(inc => {
     if (filterSource && inc.source !== filterSource) return false;
@@ -185,24 +207,52 @@ export default function IncidentLogSection() {
   const openCreate = () => { setEditTarget(null); setShowForm(true); };
   const openEdit   = (inc: SftpIncident) => { setEditTarget(inc); setShowForm(true); };
 
-  const handleFormSubmit = (data: Omit<SftpIncident, 'id' | 'reporter_name' | 'created_at'>) => {
+  const handleFormSubmit = async (data: Omit<SftpIncident, 'id' | 'reporter_name' | 'created_at'>) => {
+    if (isDemoMode) {
+      if (editTarget) {
+        setIncidents(prev => prev.map(i => i.id === editTarget.id ? { ...editTarget, ...data } : i));
+      } else {
+        const newId = Math.max(0, ...incidents.map(i => i.id)) + 1;
+        setIncidents(prev => [{
+          ...data, id: newId,
+          reporter_name: '目前使用者',
+          created_at: new Date().toISOString(),
+        }, ...prev]);
+        setPage(1);
+      }
+      return;
+    }
+    const token = sessionStorage.getItem('auth_token');
     if (editTarget) {
-      setIncidents(prev => prev.map(i => i.id === editTarget.id ? { ...editTarget, ...data } : i));
+      await fetch(apiUrl(`/api/incidents/${editTarget.id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
     } else {
-      const newId = Math.max(0, ...incidents.map(i => i.id)) + 1;
-      setIncidents(prev => [{
-        ...data, id: newId,
-        reporter_name: '目前使用者',
-        created_at: new Date().toISOString(),
-      }, ...prev]);
+      await fetch(apiUrl('/api/incidents'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(data),
+      });
       setPage(1);
     }
+    setRefreshKey(k => k + 1);
   };
 
-  const handleResolve = (id: number) => {
-    setIncidents(prev =>
-      prev.map(i => i.id === id ? { ...i, ended_at: new Date().toISOString() } : i)
-    );
+  const handleResolve = async (id: number) => {
+    if (isDemoMode) {
+      setIncidents(prev =>
+        prev.map(i => i.id === id ? { ...i, ended_at: new Date().toISOString() } : i)
+      );
+      return;
+    }
+    const token = sessionStorage.getItem('auth_token');
+    await fetch(apiUrl(`/api/incidents/${id}/resolve`), {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setRefreshKey(k => k + 1);
   };
 
   const pageIds        = paginated.map(i => i.id);
@@ -448,7 +498,13 @@ export default function IncidentLogSection() {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={9} style={{ padding: '40px 0', textAlign: 'center', color: '#aaa', fontSize: 13 }}>
+                    載入中…
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
                 <tr>
                   <td colSpan={9} style={{ padding: '40px 0', textAlign: 'center', color: '#999', fontSize: 13 }}>
                     尚無符合條件的異常事件記錄
