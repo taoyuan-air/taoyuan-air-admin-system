@@ -19,6 +19,25 @@ Step 2  選擇 .csv / .txt 檔案並送出
 Step 3  顯示完成 / 失敗結果
 ```
 
+## 前端檔案結構
+
+Upload 頁面已依功能區塊拆分，`index.tsx` 保留頁面狀態與流程控制，其餘 UI 與共用資料放在同層檔案。
+
+| 檔案 | 職責 |
+| ---- | ---- |
+| `index.tsx` | 頁面容器。管理 step、檔案暫存、上傳流程、SSE 進度、歷史紀錄篩選與批次操作狀態。 |
+| `uploadHelpers.ts` | 共用常數、型別與工具函式，例如測站設定、允許副檔名、時間格式化、檔案大小格式化。 |
+| `UploadStepSections.tsx` | 上傳流程區塊 UI，包含 Stepper、測站選擇、檔案上傳區、上傳進度與上傳結果。 |
+| `UploadHistorySection.tsx` | 歷史紀錄 UI，包含搜尋、每頁筆數、表格、分頁、勾選與批次操作列。 |
+| `UploadDialogs.tsx` | 彈窗 UI，包含匯出 Excel 確認與批次刪除確認。 |
+
+### 拆分原則
+
+- `index.tsx` 負責資料流與事件處理，不直接堆疊大型 JSX 區塊。
+- 區塊元件只透過 props 接收狀態與 callback，不直接呼叫 API。
+- 共用常數與型別集中在 `uploadHelpers.ts`，避免各區塊重複宣告。
+- 歷史紀錄與 Dialog 獨立拆出，因為它們和上傳 Step 流程是不同操作區域。
+
 ## API
 
 | Method | Path                                 | 權限     | 說明 |
