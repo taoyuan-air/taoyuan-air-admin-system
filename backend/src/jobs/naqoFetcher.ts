@@ -62,9 +62,9 @@ async function updateLogStatus(
   );
 }
 
-async function isAlreadyParsed(fileName: string): Promise<boolean> {
+async function isAlreadyProcessed(fileName: string): Promise<boolean> {
   const result = await pool.query(
-    `SELECT 1 FROM sftp_transfer_logs WHERE source = 'NAQO' AND file_name = $1 AND status = 'parsed' LIMIT 1`,
+    `SELECT 1 FROM sftp_transfer_logs WHERE source = 'NAQO' AND file_name = $1 AND status IN ('parsed', 'failed') LIMIT 1`,
     [fileName],
   );
   return result.rowCount !== null && result.rowCount > 0;
@@ -141,8 +141,8 @@ export async function fetchAndIngestNaqo(): Promise<void> {
   }
 
   for (const fileName of files) {
-    if (await isAlreadyParsed(fileName)) {
-      console.log(`[NAQO] skip already parsed: ${fileName}`);
+    if (await isAlreadyProcessed(fileName)) {
+      console.log(`[NAQO] skip already processed: ${fileName}`);
       continue;
     }
     await ingestFile(fileName, path.join(SFTP_NAQO_DIR, fileName));

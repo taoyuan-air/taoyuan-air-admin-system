@@ -34,15 +34,28 @@ router.get('/records/:source', authenticateJWT, async (req: Request, res: Respon
   const offset = (page - 1) * limit;
 
   const [countResult, rowsResult] = await Promise.all([
-    pool.query('SELECT COUNT(*) FROM sftp_transfer_logs WHERE source = $1', [source]),
     pool.query(
-      `SELECT id AS "uploadId", file_name AS "fileName", file_size AS "fileSize",
-              source AS "dataCategory", 'hourly_obs' AS "dataType",
-              status AS "uploadStatus", received_at AS "createdAt",
-              source AS username
-       FROM sftp_transfer_logs
-       WHERE source = $1
-       ORDER BY received_at DESC
+      `SELECT COUNT(*) FROM (
+         SELECT DISTINCT ON (file_name) 1
+         FROM sftp_transfer_logs
+         WHERE source = $1
+         ORDER BY file_name, received_at DESC
+       ) t`,
+      [source],
+    ),
+    pool.query(
+      `SELECT "uploadId", "fileName", "fileSize", "dataCategory", "dataType", "uploadStatus", "createdAt", username
+       FROM (
+         SELECT DISTINCT ON (file_name)
+           id AS "uploadId", file_name AS "fileName", file_size AS "fileSize",
+           source AS "dataCategory", 'hourly_obs' AS "dataType",
+           status AS "uploadStatus", received_at AS "createdAt",
+           source AS username
+         FROM sftp_transfer_logs
+         WHERE source = $1
+         ORDER BY file_name, received_at DESC
+       ) latest
+       ORDER BY "createdAt" DESC
        LIMIT $2 OFFSET $3`,
       [source, limit, offset],
     ),
