@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react';
-import { BarChart3, LineChart, PieChart } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { BarChart3, Download, LineChart, PieChart } from 'lucide-react';
 import Select from 'react-select';
 import Card from '../../components/Card';
 import DatePicker from '../../components/DatePicker';
@@ -245,25 +248,44 @@ function TrendChart({ data, metric }: { data: { label: string; value: number }[]
 
 function DonutChart({ data }: { data: { label: string; value: number; color: string }[] }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
-  let cursor = 0;
-  const gradient = data.length === 0 || total === 0
-    ? 'conic-gradient(rgba(0,0,0,0.08) 0 100%)'
-    : `conic-gradient(${data.map(item => {
-        const start = cursor;
-        cursor += (item.value / total) * 100;
-        return `${item.color} ${start}% ${cursor}%`;
-      }).join(', ')})`;
+  const size = 140;
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = 50;
+  const strokeWidth = 28;
+  const circumference = 2 * Math.PI * r;
+
+  let cumulative = 0;
+  const segments = total > 0
+    ? data.map(item => {
+        const dash = (item.value / total) * circumference;
+        const offset = -cumulative;
+        cumulative += dash;
+        return { ...item, dash, offset };
+      })
+    : [];
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-      <div style={{
-        width: 140, height: 140, borderRadius: '50%',
-        background: gradient,
-        position: 'relative', flexShrink: 0,
-      }}>
+      <div style={{ position: 'relative', flexShrink: 0, width: size, height: size }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+          {segments.length === 0 ? (
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth={strokeWidth} />
+          ) : segments.map((seg, i) => (
+            <circle
+              key={i}
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${seg.dash} ${circumference - seg.dash}`}
+              strokeDashoffset={seg.offset}
+            />
+          ))}
+        </svg>
         <div style={{
-          position: 'absolute', inset: 28, borderRadius: '50%',
-          backgroundColor: '#fff', display: 'flex', flexDirection: 'column',
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
         }}>
           <span style={{ fontSize: 22, fontWeight: 800, color: '#374151' }}>{total}</span>
@@ -285,28 +307,56 @@ function DonutChart({ data }: { data: { label: string; value: number; color: str
   );
 }
 
-function RankingBars({ data }: { data: { label: string; value: number; color: string }[] }) {
-  const max = Math.max(1, ...data.map(d => d.value));
+function ColumnChart({ data }: { data: { label: string; value: number; color: string }[] }) {
+  const width = 460;
+  const height = 200;
+  const pad = { top: 28, right: 20, bottom: 44, left: 36 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+  const rawMax = Math.max(1, ...data.map(d => d.value));
+  const max = rawMax % 2 === 0 ? rawMax : rawMax + 1;
+  const n = data.length || 1;
+  const slotW = innerW / n;
+  const barW = Math.min(slotW * 0.48, 64);
+
+  if (data.length === 0) {
+    return <div style={{ fontSize: 13, color: '#999', padding: '24px 0' }}>沒有符合條件的來源排行資料</div>;
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {data.length === 0 ? (
-        <div style={{ fontSize: 13, color: '#999', padding: '24px 0' }}>沒有符合條件的來源排行資料</div>
-      ) : data.map(item => (
-        <div key={item.label}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-            <span style={{ fontSize: 12, color: '#666', fontWeight: 700 }}>{item.label}</span>
-            <span style={{ fontSize: 12, color: '#999' }}>{item.value} 件</span>
-          </div>
-          <div style={{ height: 9, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-            <div style={{
-              width: `${Math.max(6, (item.value / max) * 100)}%`,
-              height: '100%', borderRadius: 999, backgroundColor: item.color,
-            }} />
-          </div>
-        </div>
-      ))}
-    </div>
+    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 200 }}>
+      {[0, 0.5, 1].map(tick => {
+        const y = pad.top + innerH - tick * innerH;
+        return (
+          <g key={tick}>
+            <line x1={pad.left} y1={y} x2={width - pad.right} y2={y} stroke="rgba(0,0,0,0.06)" />
+            <text x={8} y={y + 4} fontSize="10" fill="#aaa">{Math.round(max * tick)}</text>
+          </g>
+        );
+      })}
+      {data.map((item, i) => {
+        const cx = pad.left + slotW * i + slotW / 2;
+        const barH = Math.max(4, (item.value / max) * innerH);
+        const x = cx - barW / 2;
+        const y = pad.top + innerH - barH;
+        return (
+          <g key={item.label}>
+            <rect x={x} y={y} width={barW} height={barH} rx={5} fill={item.color} opacity={0.85} />
+            <text x={cx} y={y - 6} textAnchor="middle" fontSize="11" fill="#555" fontWeight="700">{item.value} 件</text>
+            <text x={cx} y={height - 10} textAnchor="middle" fontSize="11" fill="#666">{item.label}</text>
+          </g>
+        );
+      })}
+    </svg>
   );
+}
+
+interface ExportMeta {
+  date: string;
+  range: string;
+  source: string;
+  type: string;
+  status: string;
 }
 
 export default function IncidentAnalyticsSection({ incidents }: Props) {
@@ -318,8 +368,71 @@ export default function IncidentAnalyticsSection({ incidents }: Props) {
   const [status, setStatus] = useState<StatusFilter | null>(null);
   const [groupBy, setGroupBy] = useState<GroupBy>('day');
   const [metric, setMetric] = useState<Metric>('count');
+  const [exporting, setExporting] = useState(false);
+  const [exportMeta, setExportMeta] = useState<ExportMeta | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const metricLabel = metricOpts.find(option => option.value === metric)?.label ?? '事件件數';
   const invalidCustomRange = rangePreset === 'custom' && isInvalidCustomRange(customFrom, customTo);
+
+  const handleExport = async () => {
+    if (!contentRef.current || exporting) return;
+    const now = new Date();
+    flushSync(() => {
+      setExportMeta({
+        date: `${now.getFullYear()}/${pad2(now.getMonth() + 1)}/${pad2(now.getDate())} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`,
+        range: getRangeLabel(rangePreset, customFrom, customTo),
+        source: source ?? '全部來源',
+        type: type ? getTypeLabel(type) : '全部類型',
+        status: status === 'ongoing' ? '異常中' : status === 'resolved' ? '已復原' : '全部狀態',
+      });
+      setExporting(true);
+    });
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+      });
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 12;
+      const contentW = pageW - margin * 2;
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgH = (canvas.height / canvas.width) * contentW;
+
+      if (imgH <= pageH - margin * 2) {
+        pdf.addImage(imgData, 'PNG', margin, margin, contentW, imgH);
+      } else {
+        // 切割成多頁
+        const pxPerMm = canvas.width / contentW;
+        let srcYPx = 0;
+        let isFirst = true;
+        while (srcYPx < canvas.height) {
+          if (!isFirst) pdf.addPage();
+          const availH = (isFirst ? pageH : pageH) - margin * 2;
+          const sliceHPx = Math.min(availH * pxPerMm, canvas.height - srcYPx);
+          const slice = document.createElement('canvas');
+          slice.width = canvas.width;
+          slice.height = Math.ceil(sliceHPx);
+          slice.getContext('2d')!.drawImage(canvas, 0, srcYPx, canvas.width, sliceHPx, 0, 0, canvas.width, sliceHPx);
+          pdf.addImage(slice.toDataURL('image/png'), 'PNG', margin, margin, contentW, sliceHPx / pxPerMm);
+          srcYPx += sliceHPx;
+          isFirst = false;
+        }
+      }
+
+      pdf.save(`異常事件分析報告_${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}.pdf`);
+    } finally {
+      flushSync(() => {
+        setExporting(false);
+        setExportMeta(null);
+      });
+    }
+  };
 
   const analysis = useMemo(() => {
     if (rangePreset === 'custom' && isInvalidCustomRange(customFrom, customTo)) {
@@ -451,7 +564,7 @@ export default function IncidentAnalyticsSection({ incidents }: Props) {
 
   return (
     <Card padding={24} style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
@@ -465,126 +578,171 @@ export default function IncidentAnalyticsSection({ incidents }: Props) {
             <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>依篩選條件產生報告用統計圖表</div>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={exporting}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '7px 14px', borderRadius: 8, border: 'none', cursor: exporting ? 'not-allowed' : 'pointer',
+            backgroundColor: exporting ? 'rgba(106,190,116,0.4)' : '#6abe74',
+            color: '#fff', fontSize: 13, fontWeight: 700,
+            transition: 'background-color 0.15s',
+            flexShrink: 0,
+          }}
+        >
+          <Download size={14} />
+          {exporting ? '產生中…' : '匯出報告'}
+        </button>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: 10,
-        marginTop: 18,
-      }}>
-        {[
-          { label: '總事件', value: `${analysis.filtered.length} 件` },
-          { label: '異常中', value: `${analysis.ongoing} 件` },
-          { label: '累計中斷', value: formatMinutes(analysis.totalDuration) },
-          { label: '平均復原', value: formatMinutes(analysis.avgResolve) },
-        ].map(item => (
-          <div key={item.label} style={{
-            padding: '13px 14px', borderRadius: 8,
-            backgroundColor: 'rgba(255,255,255,0.72)',
-            border: '1px solid rgba(0,0,0,0.06)',
-          }}>
-            <div style={{ fontSize: 11, color: '#999', marginBottom: 5 }}>{item.label}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#374151' }}>{item.value}</div>
+      <div ref={contentRef} style={{ marginTop: 18 }}>
+        {/* PDF 標頭：匯出時才顯示 */}
+        {exportMeta && (
+          <div style={{ marginBottom: 16, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(106,190,116,0.25)' }}>
+            <div style={{ background: '#6abe74', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ color: '#fff', fontSize: 16, fontWeight: 800, letterSpacing: 0.3 }}>SFTP 傳輸異常事件分析報告</div>
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 3 }}>桃園國際機場空品資料管理系統</div>
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, textAlign: 'right', marginTop: 2 }}>
+                <div>產出時間</div>
+                <div style={{ fontWeight: 700, marginTop: 2 }}>{exportMeta.date}</div>
+              </div>
+            </div>
+            <div style={{ background: 'rgba(106,190,116,0.06)', padding: '10px 18px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid rgba(106,190,116,0.15)' }}>
+              <span style={{ fontSize: 11, color: '#888', fontWeight: 700 }}>篩選條件</span>
+              {[exportMeta.range, exportMeta.source, exportMeta.type, exportMeta.status].map((val, i) => (
+                <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {i > 0 && <span style={{ color: '#ccc', fontSize: 10 }}>｜</span>}
+                  <span style={{ fontSize: 11, color: '#555', background: 'rgba(106,190,116,0.12)', padding: '2px 8px', borderRadius: 99 }}>{val}</span>
+                </span>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        )}
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: 12,
-        marginTop: 18,
-      }}>
-        <div>
-          <label style={labelStyle}>時間區段</label>
-          <Select
-            options={rangeOpts}
-            value={rangeOpts.find(o => o.value === rangePreset)}
-            onChange={opt => setRangePreset(opt?.value ?? '30d')}
-            styles={selectStyles}
-            isSearchable={false}
-            menuPortalTarget={document.body}
-            menuPosition="fixed"
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>資料來源</label>
-          <Select
-            options={INCIDENT_SOURCE_OPTIONS}
-            value={INCIDENT_SOURCE_OPTIONS.find(o => o.value === source) ?? null}
-            onChange={opt => setSource(opt?.value ?? null)}
-            styles={selectStyles}
-            placeholder="全部來源"
-            isClearable
-            isSearchable={false}
-            menuPortalTarget={document.body}
-            menuPosition="fixed"
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>異常類型</label>
-          <Select
-            options={INCIDENT_TYPE_OPTIONS}
-            value={INCIDENT_TYPE_OPTIONS.find(o => o.value === type) ?? null}
-            onChange={opt => setType(opt?.value ?? null)}
-            styles={selectStyles}
-            placeholder="全部類型"
-            isClearable
-            isSearchable={false}
-            menuPortalTarget={document.body}
-            menuPosition="fixed"
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>狀態</label>
-          <Select
-            options={statusOpts}
-            value={statusOpts.find(o => o.value === status) ?? null}
-            onChange={opt => setStatus(opt?.value ?? null)}
-            styles={selectStyles}
-            placeholder="全部狀態"
-            isClearable
-            isSearchable={false}
-            menuPortalTarget={document.body}
-            menuPosition="fixed"
-          />
-        </div>
-      </div>
-
-      {rangePreset === 'custom' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 12 }}>
-          <div>
-            <label style={labelStyle}>開始日期</label>
-            <DatePicker value={customFrom} onChange={setCustomFrom} placeholder="選擇開始日期" isClearable />
-          </div>
-          <div>
-            <label style={labelStyle}>結束日期</label>
-            <DatePicker value={customTo} onChange={setCustomTo} placeholder="選擇結束日期" isClearable />
-          </div>
-          {invalidCustomRange && (
-            <div style={{
-              gridColumn: '1 / -1',
-              fontSize: 12,
-              color: '#e57373',
-              fontWeight: 600,
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: 10,
+        }}>
+          {[
+            { label: '總事件', value: `${analysis.filtered.length} 件` },
+            { label: '異常中', value: `${analysis.ongoing} 件` },
+            { label: '累計中斷', value: formatMinutes(analysis.totalDuration) },
+            { label: '平均復原', value: formatMinutes(analysis.avgResolve) },
+          ].map(item => (
+            <div key={item.label} style={{
+              padding: '13px 14px', borderRadius: 8,
+              backgroundColor: 'rgba(255,255,255,0.72)',
+              border: '1px solid rgba(0,0,0,0.06)',
             }}>
-              開始日期必須小於或等於結束日期
+              <div style={{ fontSize: 11, color: '#999', marginBottom: 5 }}>{item.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#374151' }}>{item.value}</div>
+            </div>
+          ))}
+        </div>
+
+      {!exportMeta && (
+        <>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 12,
+            marginTop: 18,
+          }}>
+            <div>
+              <label style={labelStyle}>時間區段</label>
+              <Select
+                options={rangeOpts}
+                value={rangeOpts.find(o => o.value === rangePreset)}
+                onChange={opt => setRangePreset(opt?.value ?? '30d')}
+                styles={selectStyles}
+                isSearchable={false}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>資料來源</label>
+              <Select
+                options={INCIDENT_SOURCE_OPTIONS}
+                value={INCIDENT_SOURCE_OPTIONS.find(o => o.value === source) ?? null}
+                onChange={opt => setSource(opt?.value ?? null)}
+                styles={selectStyles}
+                placeholder="全部來源"
+                isClearable
+                isSearchable={false}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>異常類型</label>
+              <Select
+                options={INCIDENT_TYPE_OPTIONS}
+                value={INCIDENT_TYPE_OPTIONS.find(o => o.value === type) ?? null}
+                onChange={opt => setType(opt?.value ?? null)}
+                styles={selectStyles}
+                placeholder="全部類型"
+                isClearable
+                isSearchable={false}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>狀態</label>
+              <Select
+                options={statusOpts}
+                value={statusOpts.find(o => o.value === status) ?? null}
+                onChange={opt => setStatus(opt?.value ?? null)}
+                styles={selectStyles}
+                placeholder="全部狀態"
+                isClearable
+                isSearchable={false}
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+              />
+            </div>
+          </div>
+
+          {rangePreset === 'custom' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 12 }}>
+              <div>
+                <label style={labelStyle}>開始日期</label>
+                <DatePicker value={customFrom} onChange={setCustomFrom} placeholder="選擇開始日期" isClearable />
+              </div>
+              <div>
+                <label style={labelStyle}>結束日期</label>
+                <DatePicker value={customTo} onChange={setCustomTo} placeholder="選擇結束日期" isClearable />
+              </div>
+              {invalidCustomRange && (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  fontSize: 12,
+                  color: '#e57373',
+                  fontWeight: 600,
+                }}>
+                  開始日期必須小於或等於結束日期
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
-        <div>
-          <label style={labelStyle}>統計單位</label>
-          <SegmentedButton options={groupOpts} value={groupBy} onChange={setGroupBy} />
-        </div>
-        <div>
-          <label style={labelStyle}>趨勢指標</label>
-          <SegmentedButton options={metricOpts} value={metric} onChange={setMetric} />
-        </div>
-      </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
+            <div>
+              <label style={labelStyle}>統計單位</label>
+              <SegmentedButton options={groupOpts} value={groupBy} onChange={setGroupBy} />
+            </div>
+            <div>
+              <label style={labelStyle}>趨勢指標</label>
+              <SegmentedButton options={metricOpts} value={metric} onChange={setMetric} />
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={{
         display: 'grid',
@@ -635,8 +793,8 @@ export default function IncidentAnalyticsSection({ incidents }: Props) {
           border: '1px solid rgba(0,0,0,0.06)',
           minWidth: 0,
         }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 14 }}>資料來源事件排行</div>
-          <RankingBars data={analysis.sourceRanking} />
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8 }}>資料來源事件排行</div>
+          <ColumnChart data={analysis.sourceRanking} />
         </div>
         <div style={{
           padding: 16, borderRadius: 8,
@@ -658,6 +816,7 @@ export default function IncidentAnalyticsSection({ incidents }: Props) {
           </div>
         </div>
       </div>
+      </div>{/* end contentRef */}
     </Card>
   );
 }

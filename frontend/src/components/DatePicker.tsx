@@ -6,6 +6,7 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   placeholder?: string;
   isClearable?: boolean;
+  small?: boolean;
 }
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -45,6 +46,7 @@ export default function DatePicker({
   onChange,
   placeholder = '選擇日期',
   isClearable = false,
+  small = false,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -91,24 +93,24 @@ export default function DatePicker({
         onBlur={() => setFocused(false)}
         style={{
           width: '100%',
-          minHeight: 38,
+          minHeight: small ? 34 : 38,
           boxSizing: 'border-box',
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
+          gap: small ? 7 : 10,
           border: `1px solid ${focused || open ? '#6abe74' : 'rgba(0,0,0,0.12)'}`,
           borderRadius: 8,
           backgroundColor: '#fff',
           boxShadow: focused || open ? '0 0 0 2px rgba(106,190,116,0.2)' : 'none',
           color: '#374151',
-          padding: '8px 10px',
+          padding: small ? '5px 8px' : '8px 10px',
           cursor: 'pointer',
           textAlign: 'left',
           transition: 'border-color 0.15s, box-shadow 0.15s',
         }}
       >
-        <Calendar size={15} color="#6abe74" />
-        <span style={{ flex: 1, fontSize: 14, fontWeight: value ? 600 : 400, color: value ? '#374151' : '#aaa' }}>
+        <Calendar size={small ? 13 : 15} color="#6abe74" />
+        <span style={{ flex: 1, fontSize: small ? 13 : 14, fontWeight: value ? 600 : 400, color: value ? '#374151' : '#aaa' }}>
           {formatDateLabel(value) || placeholder}
         </span>
         {isClearable && value && (

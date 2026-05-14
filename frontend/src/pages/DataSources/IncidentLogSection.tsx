@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { AlertTriangle, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { AlertTriangle, Plus, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import Select from 'react-select';
 import Card from '../../components/Card';
+import DatePicker from '../../components/DatePicker';
 import IncidentFormModal from './IncidentFormModal';
 import IncidentDetailModal from './IncidentDetailModal';
 import IncidentAnalyticsSection from './IncidentAnalyticsSection';
@@ -63,7 +65,37 @@ const MOCK_INCIDENTS: SftpIncident[] = [
   },
 ];
 
-const PAGE_SIZE = 10;
+type PageSizeOption = 10 | 30 | 50 | 100 | 200 | 'All';
+
+const PAGE_SIZE_OPTIONS: { value: PageSizeOption; label: string }[] = [
+  { value: 10,    label: '10 筆' },
+  { value: 30,    label: '30 筆' },
+  { value: 50,    label: '50 筆' },
+  { value: 100,   label: '100 筆' },
+  { value: 200,   label: '200 筆' },
+  { value: 'All', label: '全部' },
+];
+
+const pageSizeSelectStyles = {
+  control: (b: object, s: { isFocused: boolean }) => ({
+    ...b, borderRadius: 8, fontSize: 13, minHeight: 36, width: 100,
+    border: `1px solid ${s.isFocused ? '#6abe74' : 'rgba(0,0,0,0.12)'}`,
+    boxShadow: s.isFocused ? '0 0 0 2px rgba(106,190,116,0.2)' : 'none',
+    backgroundColor: '#fff', '&:hover': { borderColor: '#6abe74' }, cursor: 'pointer',
+  }),
+  option: (b: object, s: { isSelected: boolean; isFocused: boolean }) => ({
+    ...b, fontSize: 13, cursor: 'pointer',
+    backgroundColor: s.isSelected ? 'rgba(106,190,116,0.12)' : s.isFocused ? 'rgba(106,190,116,0.06)' : '#fff',
+    color: s.isSelected ? '#2d6a4f' : '#374151', fontWeight: s.isSelected ? 600 : 400,
+  }),
+  singleValue: (b: object) => ({ ...b, color: '#374151', fontWeight: 600 }),
+  indicatorSeparator: () => ({ display: 'none' }),
+  dropdownIndicator: (b: object) => ({ ...b, color: '#6abe74', padding: '0 8px' }),
+  menu: (b: object) => ({ ...b, borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', border: '1px solid rgba(106,190,116,0.2)', width: 100 }),
+  menuList: (b: object) => ({ ...b, padding: 4 }),
+  menuPortal: (b: object) => ({ ...b, zIndex: 9999 }),
+  valueContainer: (b: object) => ({ ...b, padding: '0 8px' }),
+};
 
 // ── Shared select styles (filter variant: slightly slimmer) ────────
 const filterSelectStyles = {
@@ -111,11 +143,21 @@ const thStyle: CSSProperties = {
 export default function IncidentLogSection() {
   const [incidents, setIncidents] = useState<SftpIncident[]>(MOCK_INCIDENTS);
 
-  // Filters (null = show all)
-  const [filterSource, setFilterSource] = useState<string | null>(null);
-  const [filterType,   setFilterType]   = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [page, setPage]                 = useState(1);
+  // Filters (null/'' = show all)
+  const [filterSource,   setFilterSource]   = useState<string | null>(null);
+  const [filterType,     setFilterType]     = useState<string | null>(null);
+  const [filterStatus,   setFilterStatus]   = useState<string | null>(null);
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo,   setFilterDateTo]   = useState('');
+  const [page, setPage]                     = useState(1);
+
+  const invalidDateRange = Boolean(filterDateFrom && filterDateTo && filterDateFrom > filterDateTo);
+
+  // Page size
+  const [pageSize, setPageSize] = useState<PageSizeOption>(10);
+
+  // Checkbox selection
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   // Modals
   const [showForm,   setShowForm]   = useState(false);
@@ -128,11 +170,16 @@ export default function IncidentLogSection() {
     if (filterType   && inc.incident_type !== filterType) return false;
     if (filterStatus === 'ongoing'  && inc.ended_at !== null) return false;
     if (filterStatus === 'resolved' && inc.ended_at === null) return false;
+    if (!invalidDateRange) {
+      const d = inc.started_at.slice(0, 10);
+      if (filterDateFrom && d < filterDateFrom) return false;
+      if (filterDateTo   && d > filterDateTo)   return false;
+    }
     return true;
   });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = pageSize === 'All' ? 1 : Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paginated  = pageSize === 'All' ? filtered : filtered.slice((page - 1) * pageSize, page * pageSize);
 
   // ── Handlers ───────────────────────────────────────────────────
   const openCreate = () => { setEditTarget(null); setShowForm(true); };
@@ -156,6 +203,51 @@ export default function IncidentLogSection() {
     setIncidents(prev =>
       prev.map(i => i.id === id ? { ...i, ended_at: new Date().toISOString() } : i)
     );
+  };
+
+  const pageIds        = paginated.map(i => i.id);
+  const isAllSelected  = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const isIndeterminate = !isAllSelected && pageIds.some(id => selectedIds.has(id));
+
+  const toggleAll = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (isAllSelected) pageIds.forEach(id => next.delete(id));
+      else               pageIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const toggleOne = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleExportExcel = () => {
+    const rows = incidents
+      .filter(i => selectedIds.has(i.id))
+      .map(i => ({
+        '來源':         i.source,
+        '異常類型':     getTypeLabel(i.incident_type),
+        '異常開始':     fmtDt(i.started_at),
+        '異常結束':     i.ended_at ? fmtDt(i.ended_at) : '尚未恢復',
+        '持續時間':     calcDuration(i.started_at, i.ended_at),
+        '狀態':         i.ended_at ? '已復原' : '異常中',
+        '影響資料範圍': i.affected_range,
+        '記錄者':       i.reporter_name,
+        '備註':         i.note,
+      }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [8, 18, 18, 18, 12, 8, 28, 10, 28].map(wch => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '異常事件');
+    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    XLSX.writeFile(wb, `SFTP異常事件_${ts}.xlsx`);
   };
 
   const changeFilter = (setter: (v: string | null) => void) =>
@@ -212,6 +304,15 @@ export default function IncidentLogSection() {
               <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>NAQO · WindLidar · MPL</div>
             </div>
           </div>
+          <Select
+            options={PAGE_SIZE_OPTIONS}
+            value={PAGE_SIZE_OPTIONS.find(o => o.value === pageSize)}
+            onChange={opt => { setPageSize(opt?.value ?? 10); setPage(1); }}
+            styles={pageSizeSelectStyles}
+            isSearchable={false}
+            menuPortalTarget={document.body}
+            menuPosition="fixed"
+          />
         </div>
 
         {/* Filter bar */}
@@ -255,16 +356,87 @@ export default function IncidentLogSection() {
               menuPosition="fixed"
             />
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap' }}>日期</span>
+            <div style={{ width: 132 }}>
+              <DatePicker
+                value={filterDateFrom}
+                onChange={v => { setFilterDateFrom(v); setPage(1); }}
+                placeholder="開始日期"
+                isClearable
+                small
+              />
+            </div>
+            <span style={{ fontSize: 13, color: '#ccc' }}>—</span>
+            <div style={{ width: 132 }}>
+              <DatePicker
+                value={filterDateTo}
+                onChange={v => { setFilterDateTo(v); setPage(1); }}
+                placeholder="結束日期"
+                isClearable
+                small
+              />
+            </div>
+          </div>
           <div style={{ marginLeft: 'auto', fontSize: 12, color: '#999' }}>
             共 <strong style={{ color: '#374151' }}>{filtered.length}</strong> 筆
           </div>
         </div>
+        {invalidDateRange && (
+          <div style={{ fontSize: 12, color: '#e57373', fontWeight: 600, marginTop: 6 }}>
+            開始日期必須早於或等於結束日期
+          </div>
+        )}
+
+        {/* Selection bar */}
+        {selectedIds.size > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            marginTop: 12, padding: '8px 8px 8px 12px',
+            borderRadius: 8,
+            backgroundColor: 'rgba(239,68,68,0.05)',
+            border: '1px solid rgba(239,68,68,0.2)',
+          }}>
+            <span style={{ fontSize: 13, color: '#374151', flex: 1 }}>
+              已選取 <strong>{selectedIds.size}</strong> 筆
+            </span>
+            <button
+              onClick={handleExportExcel}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '7px 14px', borderRadius: 6, border: 'none',
+                backgroundColor: '#6abe74', color: '#fff',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              <FileSpreadsheet size={13} /> 匯出 Excel
+            </button>
+            <button
+              onClick={clearSelection}
+              style={{
+                width: 28, height: 28, borderRadius: '50%',
+                border: 'none', backgroundColor: 'transparent',
+                color: '#9ca3af', fontSize: 18, lineHeight: 1, cursor: 'pointer',
+              }}
+            >×</button>
+          </div>
+        )}
 
         {/* Table */}
         <div style={{ overflowX: 'auto', marginTop: 12 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                <th style={{ padding: '10px 14px', width: 40 }}>
+                  <input
+                    type="checkbox"
+                    className="custom-checkbox"
+                    checked={isAllSelected}
+                    ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                    onChange={toggleAll}
+                    disabled={pageIds.length === 0}
+                  />
+                </th>
                 <th style={{ ...thStyle, width: '8%'  }}>來源</th>
                 <th style={{ ...thStyle, width: '22%' }}>異常類型</th>
                 <th style={{ ...thStyle, width: '16%' }}>異常開始</th>
@@ -278,15 +450,28 @@ export default function IncidentLogSection() {
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '40px 0', textAlign: 'center', color: '#999', fontSize: 13 }}>
+                  <td colSpan={9} style={{ padding: '40px 0', textAlign: 'center', color: '#999', fontSize: 13 }}>
                     尚無符合條件的異常事件記錄
                   </td>
                 </tr>
               ) : paginated.map(inc => {
-                const sc      = SOURCE_COLORS[inc.source];
-                const ongoing = inc.ended_at === null;
+                const sc        = SOURCE_COLORS[inc.source];
+                const ongoing   = inc.ended_at === null;
+                const isChecked = selectedIds.has(inc.id);
                 return (
-                  <tr key={inc.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                  <tr key={inc.id} style={{
+                    borderBottom: '1px solid rgba(0,0,0,0.05)',
+                    backgroundColor: isChecked ? 'rgba(239,68,68,0.04)' : undefined,
+                  }}>
+                    {/* Checkbox */}
+                    <td style={{ padding: '12px 14px' }}>
+                      <input
+                        type="checkbox"
+                        className="custom-checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleOne(inc.id)}
+                      />
+                    </td>
                     {/* Source */}
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{
