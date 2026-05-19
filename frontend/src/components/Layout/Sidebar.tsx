@@ -16,7 +16,7 @@ const navItems: { path: string; label: string; Icon: React.ElementType; allowedR
   { path: "/",            label: "儀表板",     Icon: LayoutDashboard, allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
   { path: "/upload",      label: "資料上傳",   Icon: Upload,          allowedRoles: ['system_admin', 'data_manager'] },
   { path: "/data-sources",label: "資料來源",   Icon: Database,        allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
-  { path: "/lidar",       label: "氣膠光達分析", Icon: Layers,          allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
+  { path: "/lidar",       label: "光達分析",    Icon: Layers,          allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
   { path: "/stations",    label: "測站管理",   Icon: Radio,           allowedRoles: ['system_admin', 'data_manager', 'readonly'] },
   { path: "/users",       label: "使用者管理", Icon: Users,           allowedRoles: ['system_admin'] },
 ];
