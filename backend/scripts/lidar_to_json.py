@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-lidar_to_json.py — Parse WindLidar L1 NetCDF files and output JSON to stdout.
+lidar_to_json.py — Parse MiniLidar L1 NetCDF files and output JSON to stdout.
 
 Usage:
     python lidar_to_json.py \

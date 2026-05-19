@@ -36,12 +36,13 @@ export default function SourceDatabase() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const isSftp = ["naqo", "windlidar", "mpl"].includes(category ?? "");
+  const isSftp = ["naqo", "minilidar", "mpl", "windlidar"].includes(category ?? "");
   const categoryLabel = {
     uav: "無人機資料系統",
     naqo: "NAQO 中大空品站",
-    windlidar: "WindLidar 風廓線光達",
+    minilidar: "MiniLidar 氣膠光達",
     mpl: "MPL 微脈衝光達",
+    windlidar: "WindLidar 風光達",
   }[category ?? ""] ?? category;
 
   const fetchAll = useCallback(async () => {
@@ -52,7 +53,7 @@ export default function SourceDatabase() {
     }
     setLoading(true);
     try {
-      const isSftpCategory = ["naqo", "windlidar", "mpl"].includes(category);
+      const isSftpCategory = ["naqo", "minilidar", "mpl", "windlidar"].includes(category);
       const url = isSftpCategory
         ? apiUrl(`/api/sftp/records/${category}?page=1&limit=9999`)
         : apiUrl("/api/uploads/history?all=true&page=1&limit=9999");

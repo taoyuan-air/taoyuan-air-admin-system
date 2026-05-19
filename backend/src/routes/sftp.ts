@@ -27,8 +27,19 @@ router.get('/logs', authenticateJWT, async (req: Request, res: Response): Promis
 });
 
 // GET /api/sftp/records/:source — SourceDatabase 頁面用，格式對齊 file_uploads
+const SOURCE_CASE_MAP: Record<string, string> = {
+  naqo:      'NAQO',
+  minilidar: 'MiniLidar',
+  mpl:       'MPL',
+  windlidar: 'WindLidar',
+};
+
 router.get('/records/:source', authenticateJWT, async (req: Request, res: Response): Promise<void> => {
-  const source = req.params.source.toUpperCase(); // naqo → NAQO
+  const source = SOURCE_CASE_MAP[req.params.source.toLowerCase()];
+  if (!source) {
+    res.status(400).json({ error: 'INVALID_SOURCE', message: '不支援的來源' });
+    return;
+  }
   const page  = Math.max(1, parseInt(req.query.page  as string ?? '1',  10));
   const limit = Math.min(200, parseInt(req.query.limit as string ?? '50', 10));
   const offset = (page - 1) * limit;
@@ -84,8 +95,9 @@ router.get('/last-sync', authenticateJWT, async (_req: Request, res: Response): 
 
   const result: Record<string, string | null> = {
     NAQO:      null,
-    WindLidar: null,
+    MiniLidar: null,
     MPL:       null,
+    WindLidar: null,
     UAV:       null,
   };
 

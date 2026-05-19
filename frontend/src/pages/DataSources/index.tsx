@@ -45,8 +45,9 @@ export default function DataSources() {
       .then((data: Record<string, string | null>) => {
         const idToKey: Record<string, string> = {
           "6": "NAQO",
-          "7": "WindLidar",
+          "7": "MiniLidar",
           "8": "MPL",
+          "9": "WindLidar",
           "2": "UAV",
         };
         setSources((prev) =>
@@ -79,8 +80,9 @@ export default function DataSources() {
 
     const sourceMap: Record<string, string> = {
       "6": "NAQO",
-      "7": "WindLidar",
+      "7": "MiniLidar",
       "8": "MPL",
+      "9": "WindLidar",
     };
     const source = sourceMap[sftpLogSrc.id];
     if (!source) {

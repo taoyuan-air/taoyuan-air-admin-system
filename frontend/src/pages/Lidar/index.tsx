@@ -95,7 +95,7 @@ export default function LidarPage() {
 
   return (
     <div>
-      <Header title="風光達分析" subtitle="WindLidar L1 互動視覺化" />
+      <Header title="氣膠光達分析" subtitle="MiniLidar L1 互動視覺化" />
 
       <LidarControls
         stations={stations}

@@ -1,8 +1,8 @@
-# Upload 頁面
+﻿# Upload 頁面
 
 UAV 檔案手動上傳、SSE 進度追蹤與歷史記錄管理。
 
-> LiDAR / WindLidar / MPL 資料改由 SFTP 流程處理，不再經由此介面手動上傳。
+> LiDAR / MiniLidar / MPL 資料改由 SFTP 流程處理，不再經由此介面手動上傳。
 
 ## 流程
 

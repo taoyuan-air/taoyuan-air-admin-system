@@ -1,4 +1,4 @@
-# 資料庫內容模組
+﻿# 資料庫內容模組
 
 依資料來源分類瀏覽上傳記錄，支援關鍵字搜尋、分頁、批次匯出 Excel 與批次刪除。
 
@@ -6,12 +6,13 @@
 
 ## 支援的資料來源（category）
 
-| `category`  | 顯示名稱              | 資料來源方式       |
-| ----------- | --------------------- | ------------------ |
-| `uav`       | 無人機資料系統        | 手動上傳（Upload） |
-| `naqo`      | NAQO 中大空品站       | SFTP 自動推送      |
-| `windlidar` | WindLidar 風廓線光達  | SFTP 自動推送      |
-| `mpl`       | MPL 微脈衝光達        | SFTP 自動推送      |
+| `category`   | 顯示名稱              | 資料來源方式       |
+| ------------ | --------------------- | ------------------ |
+| `uav`        | 無人機資料系統        | 手動上傳（Upload） |
+| `naqo`       | NAQO 中大空品站       | SFTP 自動推送      |
+| `minilidar`  | MiniLidar 氣膠光達    | SFTP 自動推送      |
+| `mpl`        | MPL 微脈衝光達        | SFTP 自動推送      |
+| `windlidar`  | WindLidar 風光達      | SFTP 自動推送      |
 
 ## 相關 API
 
@@ -47,7 +48,7 @@ Response：
 | -------------- | ----------------------------------------------------------------- |
 | `uploadId`     | 記錄 ID                                                           |
 | `fileName`     | 檔案名稱                                                          |
-| `dataCategory` | 資料來源類別（`uav` / `naqo` / `windlidar` / `mpl`）             |
+| `dataCategory` | 資料來源類別（`uav` / `naqo` / `minilidar` / `mpl` / `windlidar`） |
 | `dataType`     | 資料子類型（見下方）                                              |
 | `fileSize`     | 檔案大小（bytes）                                                 |
 | `uploadStatus` | 狀態：`completed` / `processing` / `failed` / `uploading` / `cancelled` |
@@ -103,9 +104,9 @@ FROM file_uploads
 WHERE data_category = 'uav'
 ORDER BY created_at DESC;
 
--- SFTP 傳輸記錄（NAQO / WindLidar / MPL）
+-- SFTP 傳輸記錄（NAQO / MiniLidar / MPL / WindLidar）
 SELECT id, source, file_name, file_size, status, received_at
 FROM sftp_transfer_logs
-WHERE source = 'NAQO'   -- 或 'WINDLIDAR' / 'MPL'
+WHERE source = 'NAQO'   -- 或 'MiniLidar' / 'MPL' / 'WindLidar'
 ORDER BY received_at DESC;
 ```

@@ -1,4 +1,4 @@
-# 資料來源管理模組
+﻿# 資料來源管理模組
 
 `DataSources` 是資料來源管理頁面，頁面上方以子頁切換分成：
 
@@ -55,8 +55,9 @@ Response：
 ```json
 {
   "NAQO": "2026-04-01T08:05:00.000Z",
-  "WindLidar": "2026-04-01T08:03:00.000Z",
+  "MiniLidar": "2026-04-01T08:03:00.000Z",
   "MPL": "2026-04-01T08:04:00.000Z",
+  "WindLidar": "2026-04-01T08:06:00.000Z",
   "UAV": "2026-04-01T08:15:00.000Z"
 }
 ```
@@ -72,7 +73,7 @@ Query string：
 
 | 參數 | 說明 |
 | ---- | ---- |
-| `source` | 來源名稱：`NAQO` / `WindLidar` / `MPL` |
+| `source` | 來源名稱：`NAQO` / `MiniLidar` / `MPL` / `WindLidar` |
 | `limit` | 最多筆數，上限 200，預設 50 |
 
 Response：
@@ -109,8 +110,9 @@ Response：
 | id | 名稱 | type | 端點 | 頻率 |
 | -- | ---- | ---- | ---- | ---- |
 | 6 | NAQO 中大空品站 | SFTP | `sftp://140.115.80.244/NAQO` | 逐時接收 |
-| 7 | WindLidar 風廓線光達 | SFTP | `sftp://140.115.80.244/WindLidar` | 逐時接收 |
+| 7 | MiniLidar 氣膠光達 | SFTP | `sftp://140.115.80.244/MiniLidar` | 逐時接收 |
 | 8 | MPL 微脈衝光達 | SFTP | `sftp://140.115.80.244/MPL` | 逐時接收 |
+| 9 | WindLidar 風光達 | SFTP | `sftp://140.115.80.244/WindLidar` | 逐時接收 |
 | 2 | 無人機資料系統 | UAV | `http://uav.internal/api/upload` | 手動 |
 | 3 | 環境部空品監測網 | EPA | `https://data.epa.gov.tw/api/v2/aqx_p_432` | 每 60 分 |
 | 4 | 中央氣象署觀測 | CWA | `https://opendata.cwa.gov.tw/api/v1/rest/datastore` | 每 30 分 |
@@ -156,8 +158,9 @@ SFTP 來源的資料庫路由對應：
 | id | route category |
 | -- | ---- |
 | 6 | `naqo` |
-| 7 | `windlidar` |
+| 7 | `minilidar` |
 | 8 | `mpl` |
+| 9 | `windlidar` |
 
 ## 新增 / 編輯資料來源
 
@@ -205,8 +208,9 @@ interface SourceRecord {
 | value | 說明 |
 | ---- | ---- |
 | `NAQO` | NAQO |
-| `WindLidar` | WindLidar |
+| `MiniLidar` | MiniLidar |
 | `MPL` | MPL |
+| `WindLidar` | WindLidar 風光達 |
 
 支援的異常類型：
 
@@ -227,7 +231,7 @@ interface SourceRecord {
 ```ts
 interface SftpIncident {
   id: number;
-  source: 'NAQO' | 'WindLidar' | 'MPL';
+  source: 'NAQO' | 'MiniLidar' | 'MPL' | 'WindLidar';
   incident_type: IncidentTypeValue;
   started_at: string;
   ended_at: string | null;
@@ -246,7 +250,7 @@ interface SftpIncident {
 
 | 欄位 | 必填 | 說明 / 驗證 |
 | ---- | ---- | ---- |
-| 資料來源 | 是 | `NAQO` / `WindLidar` / `MPL` |
+| 資料來源 | 是 | `NAQO` / `MiniLidar` / `MPL` / `WindLidar` |
 | 異常類型 | 是 | 從異常類型選項選擇 |
 | 異常開始時間 | 是 | 使用自訂日期時間選擇器 |
 | 異常結束時間 | 否 | 留空代表尚未恢復 |
@@ -318,7 +322,7 @@ interface SftpIncident {
 | 條件 | 說明 |
 | ---- | ---- |
 | 時間區段 | 近 30 天、近 7 天、本月、全部時間、自訂區間 |
-| 資料來源 | 全部 / NAQO / WindLidar / MPL |
+| 資料來源 | 全部 / NAQO / MiniLidar / MPL / WindLidar |
 | 異常類型 | 全部 / 任一異常類型 |
 | 狀態 | 全部 / 異常中 / 已復原 |
 | 統計單位 | 每日 / 每週 / 每月 |

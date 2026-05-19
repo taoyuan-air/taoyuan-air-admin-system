@@ -37,15 +37,20 @@ export const MOCK_RECORDS: Record<string, DbRecord[]> = {
     { uploadId: 103, fileName: "NAQO_20260401_06.json", dataCategory: "naqo", dataType: "hourly_obs", fileSize: 4096, uploadStatus: "failed", createdAt: "2026-04-01T06:05:00", username: "sftp" },
     { uploadId: 104, fileName: "NAQO_20260401_05.json", dataCategory: "naqo", dataType: "hourly_obs", fileSize: 4096, uploadStatus: "completed", createdAt: "2026-04-01T05:05:00", username: "sftp" },
   ],
-  windlidar: [
-    { uploadId: 201, fileName: "WindLidar_20260401_08.csv", dataCategory: "windlidar", dataType: "hourly_obs", fileSize: 8192, uploadStatus: "completed", createdAt: "2026-04-01T08:03:00", username: "sftp" },
-    { uploadId: 202, fileName: "WindLidar_20260401_07.csv", dataCategory: "windlidar", dataType: "hourly_obs", fileSize: 8192, uploadStatus: "completed", createdAt: "2026-04-01T07:03:00", username: "sftp" },
-    { uploadId: 203, fileName: "WindLidar_20260401_06.csv", dataCategory: "windlidar", dataType: "hourly_obs", fileSize: 8192, uploadStatus: "completed", createdAt: "2026-04-01T06:03:00", username: "sftp" },
+  minilidar: [
+    { uploadId: 201, fileName: "MiniLidar_20260401_08.csv", dataCategory: "minilidar", dataType: "hourly_obs", fileSize: 8192, uploadStatus: "completed", createdAt: "2026-04-01T08:03:00", username: "sftp" },
+    { uploadId: 202, fileName: "MiniLidar_20260401_07.csv", dataCategory: "minilidar", dataType: "hourly_obs", fileSize: 8192, uploadStatus: "completed", createdAt: "2026-04-01T07:03:00", username: "sftp" },
+    { uploadId: 203, fileName: "MiniLidar_20260401_06.csv", dataCategory: "minilidar", dataType: "hourly_obs", fileSize: 8192, uploadStatus: "completed", createdAt: "2026-04-01T06:03:00", username: "sftp" },
   ],
   mpl: [
     { uploadId: 301, fileName: "MPL_20260401_08.csv", dataCategory: "mpl", dataType: "hourly_obs", fileSize: 6144, uploadStatus: "completed", createdAt: "2026-04-01T08:04:00", username: "sftp" },
     { uploadId: 302, fileName: "MPL_20260401_07.csv", dataCategory: "mpl", dataType: "hourly_obs", fileSize: 6144, uploadStatus: "processing", createdAt: "2026-04-01T07:04:00", username: "sftp" },
     { uploadId: 303, fileName: "MPL_20260401_06.csv", dataCategory: "mpl", dataType: "hourly_obs", fileSize: 6144, uploadStatus: "completed", createdAt: "2026-04-01T06:04:00", username: "sftp" },
+  ],
+  windlidar: [
+    { uploadId: 401, fileName: "WindLidar_20260401_08.csv", dataCategory: "windlidar", dataType: "hourly_obs", fileSize: 10240, uploadStatus: "completed", createdAt: "2026-04-01T08:06:00", username: "sftp" },
+    { uploadId: 402, fileName: "WindLidar_20260401_07.csv", dataCategory: "windlidar", dataType: "hourly_obs", fileSize: 10240, uploadStatus: "completed", createdAt: "2026-04-01T07:06:00", username: "sftp" },
+    { uploadId: 403, fileName: "WindLidar_20260401_06.csv", dataCategory: "windlidar", dataType: "hourly_obs", fileSize: 10240, uploadStatus: "failed", createdAt: "2026-04-01T06:06:00", username: "sftp" },
   ],
 };
 

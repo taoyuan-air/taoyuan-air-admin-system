@@ -1,9 +1,9 @@
-# WindLidar 互動視覺化頁面
+﻿# MiniLidar 互動視覺化頁面
 
-風光達（WindLidar）L1 NetCDF 資料互動式瀏覽頁面。讓使用者在瀏覽器中選取站點與日期，以四個同步可縮放的 Plotly 圖表，即時呈現 NRB 訊號強度、退偏振比、儀器溫度、雷射能量與背景值。
+氣膠光達（MiniLidar）L1 NetCDF 資料互動式瀏覽頁面。讓使用者在瀏覽器中選取站點與日期，以四個同步可縮放的 Plotly 圖表，即時呈現 NRB 訊號強度、退偏振比、儀器溫度、雷射能量與背景值。
 
 > 路由：`/lidar`
-> 側邊欄：**風光達分析**（`Layers` 圖示）
+> 側邊欄：**氣膠光達分析**（`Layers` 圖示）
 > 權限：`system_admin`、`data_manager`、`readonly`
 
 ---
@@ -59,7 +59,7 @@
 │                         後台管理系統                               │
 │                                                                  │
 │  ┌──────────────┐  SFTP 自動下載   ┌─────────────────────────┐   │
-│  │  WindLidar   │ ──────────────→  │  backend/uploads/sftp/  │   │
+│  │  MiniLidar   │ ──────────────→  │  backend/uploads/sftp/  │   │
 │  │   儀器端     │                  │  lidar/                 │   │
 │  └──────────────┘                  │  Guanyin_20260411.nc    │   │
 │                                    │  Guanyin_20260412.nc    │   │
@@ -100,7 +100,7 @@
 
 ### 3.1 NetCDF 檔案格式
 
-風光達 L1 資料以 **NetCDF4（HDF5 底層）** 格式儲存。
+氣膠光達 L1 資料以 **NetCDF4（HDF5 底層）** 格式儲存。
 目錄：`backend/uploads/sftp/lidar/`
 命名規則：`{Station}_{YYYYMMDD}.nc`（UTC 日期）
 
@@ -226,7 +226,7 @@ endUtc   = Date.UTC(year, month-1, day, 23, 59, 59) - 8*3600*1000
 登入後台管理系統
        │
        ▼
-  側邊欄點選「風光達分析」→ /lidar
+  側邊欄點選「氣膠光達分析」→ /lidar
        │
        ▼ （React.lazy 延遲載入，Plotly 此時才開始下載）
 ┌──────────────────────────────────────────────┐

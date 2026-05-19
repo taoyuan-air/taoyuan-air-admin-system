@@ -5,7 +5,7 @@ import { pool } from '../db/pool';
 
 const router = Router();
 
-const VALID_SOURCES = ['NAQO', 'WindLidar', 'MPL'] as const;
+const VALID_SOURCES = ['NAQO', 'MiniLidar', 'MPL', 'WindLidar'] as const;
 const VALID_INCIDENT_TYPES = [
   'network_disconnect',
   'computer_restart',
@@ -47,7 +47,7 @@ function validateBody(body: Record<string, unknown>): string | null {
   const { source, incident_type, started_at, ended_at } = body;
 
   if (!source || !VALID_SOURCES.includes(source as IncidentSource)) {
-    return 'source 必須為 NAQO、WindLidar 或 MPL';
+    return 'source 必須為 NAQO、MiniLidar、MPL 或 WindLidar';
   }
   if (!incident_type || !VALID_INCIDENT_TYPES.includes(incident_type as IncidentType)) {
     return 'incident_type 為無效值';

@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS sftp_incidents (
     id              SERIAL PRIMARY KEY,
 
     source          VARCHAR(20)   NOT NULL
-                    CHECK (source IN ('NAQO', 'WindLidar', 'MPL')),
+                    CHECK (source IN ('NAQO', 'MiniLidar', 'MPL')),
 
     incident_type   VARCHAR(50)   NOT NULL
                     CHECK (incident_type IN (
@@ -50,6 +50,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS sftp_incidents_updated_at ON sftp_incidents;
 CREATE TRIGGER sftp_incidents_updated_at
 BEFORE UPDATE ON sftp_incidents
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

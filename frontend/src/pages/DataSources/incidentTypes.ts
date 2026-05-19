@@ -1,4 +1,4 @@
-export type IncidentSource = 'NAQO' | 'WindLidar' | 'MPL';
+export type IncidentSource = 'NAQO' | 'MiniLidar' | 'MPL' | 'WindLidar';
 
 export type IncidentTypeValue =
   | 'network_disconnect'
@@ -37,14 +37,16 @@ export const INCIDENT_TYPE_OPTIONS: { value: IncidentTypeValue; label: string }[
 
 export const INCIDENT_SOURCE_OPTIONS: { value: IncidentSource; label: string }[] = [
   { value: 'NAQO',      label: 'NAQO' },
-  { value: 'WindLidar', label: 'WindLidar' },
+  { value: 'MiniLidar', label: 'MiniLidar' },
   { value: 'MPL',       label: 'MPL' },
+  { value: 'WindLidar', label: 'WindLidar' },
 ];
 
 export const SOURCE_COLORS: Record<IncidentSource, { color: string; bg: string }> = {
   NAQO:      { color: '#4a9e55', bg: 'rgba(106,190,116,0.12)' },
-  WindLidar: { color: '#4a9e55', bg: 'rgba(106,190,116,0.12)' },
+  MiniLidar: { color: '#4a9e55', bg: 'rgba(106,190,116,0.12)' },
   MPL:       { color: '#4a9e55', bg: 'rgba(106,190,116,0.12)' },
+  WindLidar: { color: '#4a9e55', bg: 'rgba(106,190,116,0.12)' },
 };
 
 export function getTypeLabel(type: IncidentTypeValue): string {

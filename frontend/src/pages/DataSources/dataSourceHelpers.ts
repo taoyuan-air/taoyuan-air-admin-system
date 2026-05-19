@@ -62,14 +62,19 @@ export const mockSftpLogs: Record<string, SftpLog[]> = {
     { time: "2026-04-01 05:05", fileName: "NAQO_20260401_05.json", dataTime: "2026-04-01 05:00", status: "parsed" },
   ],
   "7": [
-    { time: "2026-04-01 08:03", fileName: "WindLidar_20260401_08.csv", dataTime: "2026-04-01 08:00", status: "parsed" },
-    { time: "2026-04-01 07:03", fileName: "WindLidar_20260401_07.csv", dataTime: "2026-04-01 07:00", status: "parsed" },
-    { time: "2026-04-01 06:03", fileName: "WindLidar_20260401_06.csv", dataTime: "2026-04-01 06:00", status: "parsed" },
+    { time: "2026-04-01 08:03", fileName: "MiniLidar_20260401_08.csv", dataTime: "2026-04-01 08:00", status: "parsed" },
+    { time: "2026-04-01 07:03", fileName: "MiniLidar_20260401_07.csv", dataTime: "2026-04-01 07:00", status: "parsed" },
+    { time: "2026-04-01 06:03", fileName: "MiniLidar_20260401_06.csv", dataTime: "2026-04-01 06:00", status: "parsed" },
   ],
   "8": [
     { time: "2026-04-01 08:04", fileName: "MPL_20260401_08.csv", dataTime: "2026-04-01 08:00", status: "parsed" },
     { time: "2026-04-01 07:04", fileName: "MPL_20260401_07.csv", dataTime: "2026-04-01 07:00", status: "received" },
     { time: "2026-04-01 06:04", fileName: "MPL_20260401_06.csv", dataTime: "2026-04-01 06:00", status: "parsed" },
+  ],
+  "9": [
+    { time: "2026-04-01 08:06", fileName: "WindLidar_20260401_08.csv", dataTime: "2026-04-01 08:00", status: "parsed" },
+    { time: "2026-04-01 07:06", fileName: "WindLidar_20260401_07.csv", dataTime: "2026-04-01 07:00", status: "parsed" },
+    { time: "2026-04-01 06:06", fileName: "WindLidar_20260401_06.csv", dataTime: "2026-04-01 06:00", status: "failed", errorMsg: "格式錯誤：缺少風速欄位" },
   ],
 };
 
@@ -174,8 +179,9 @@ export function validateDataSourceForm(
 export function databaseCategoryForSource(source: SourceRecord): string {
   const categoryMap: Record<string, string> = {
     "6": "naqo",
-    "7": "windlidar",
+    "7": "minilidar",
     "8": "mpl",
+    "9": "windlidar",
   };
   return categoryMap[source.id] ?? source.type.toLowerCase();
 }

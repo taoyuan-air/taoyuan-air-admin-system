@@ -33,11 +33,11 @@ const MOCK_INCIDENTS: SftpIncident[] = [
   },
   {
     id: 2,
-    source: 'WindLidar',
+    source: 'MiniLidar',
     incident_type: 'software_update',
     started_at: '2026-05-02T09:00:00+08:00',
     ended_at: '2026-05-02T10:30:00+08:00',
-    affected_range: '5/2 09:00~10:00 WindLidar 資料中斷',
+    affected_range: '5/2 09:00~10:00 MiniLidar 資料中斷',
     note: '站點電腦進行 Windows 系統更新，重啟後自動恢復',
     reporter_name: '李小華',
     created_at: '2026-05-02T10:45:00+08:00',
@@ -126,8 +126,9 @@ const filterSelectStyles = {
 
 const sourceFilterOpts = [
   { value: 'NAQO', label: 'NAQO' },
-  { value: 'WindLidar', label: 'WindLidar' },
+  { value: 'MiniLidar', label: 'MiniLidar' },
   { value: 'MPL', label: 'MPL' },
+  { value: 'WindLidar', label: 'WindLidar' },
 ];
 const statusFilterOpts = [
   { value: 'ongoing',  label: '異常中' },
@@ -351,7 +352,7 @@ export default function IncidentLogSection() {
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#374151' }}>SFTP 傳輸異常事件記錄</div>
-              <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>NAQO · WindLidar · MPL</div>
+              <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>NAQO · MiniLidar · MPL · WindLidar</div>
             </div>
           </div>
           <Select
