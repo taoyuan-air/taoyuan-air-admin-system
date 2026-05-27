@@ -4,7 +4,7 @@ lidar_to_json.py — Parse MiniLidar L1 NetCDF files and output JSON to stdout.
 
 Usage:
     python lidar_to_json.py \
-        --nc_dir   /path/to/sftp/lidar \
+        --nc_dir   /path/to/sftp/mini_lidar \
         --station  Guanyin \
         --start    2026-04-11T16:00:00Z \
         --end      2026-04-12T15:59:59Z \

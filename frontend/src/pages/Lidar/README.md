@@ -101,7 +101,7 @@
 ### 3.1 NetCDF 檔案格式
 
 氣膠光達 L1 資料以 **NetCDF4（HDF5 底層）** 格式儲存。
-目錄：`backend/uploads/sftp/lidar/`
+目錄：`backend/uploads/sftp/mini_lidar/`
 命名規則：`{Station}_{YYYYMMDD}.nc`（UTC 日期）
 
 | 變數名稱      | 維度（Guanyin）  | 說明                                               |
@@ -406,7 +406,7 @@ fetchLidarPlotData(token, params)
 
 **`scanStations()`**
 
-掃描 `LIDAR_DIR`（預設 `uploads/sftp/lidar`），解析 `{Station}_{YYYYMMDD}.nc` 格式的檔名，回傳各站點的台灣本地可用日期列表。
+掃描 `LIDAR_DIR`（預設 `uploads/sftp/mini_lidar`），解析 `{Station}_{YYYYMMDD}.nc` 格式的檔名，回傳各站點的台灣本地可用日期列表。
 
 **`runLidarParser(params)`**
 
@@ -511,7 +511,7 @@ fetchLidarPlotData(token, params)
 ```json
 {
   "netcdf4": "ok",
-  "lidarDir": "uploads/sftp/lidar"
+  "lidarDir": "uploads/sftp/mini_lidar"
 }
 ```
 
@@ -632,7 +632,7 @@ python -c "from netCDF4 import Dataset; print('ok')"
 
 | 變數         | 預設值（Windows/Linux）                     | 說明               |
 | ------------ | ------------------------------------------- | ------------------ |
-| `LIDAR_DIR`  | `uploads/sftp/lidar`                        | .nc 檔目錄         |
+| `LIDAR_DIR`  | `uploads/sftp/mini_lidar`                   | .nc 檔目錄         |
 | `PYTHON_CMD` | `python`（Windows）/ `python3`（Linux/Mac） | Python 執行指令    |
 
 ### 前端依賴（已安裝）
@@ -668,7 +668,7 @@ backend/src/
 ├── routes/lidar.ts              ← Express 路由（/api/lidar/*）
 └── services/lidarService.ts     ← 目錄掃描、參數驗證、spawn Python
 
-backend/uploads/sftp/lidar/
+backend/uploads/sftp/mini_lidar/
 ├── Guanyin_20260411.nc          ← 測試資料（UTC 2026-04-11）
 └── Guanyin_20260412.nc          ← 測試資料（UTC 2026-04-12）
 ```

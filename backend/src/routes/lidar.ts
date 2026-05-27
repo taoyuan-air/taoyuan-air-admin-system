@@ -53,7 +53,7 @@ router.get('/health', authenticateJWT, async (_req: Request, res: Response): Pro
   exec(`${pythonCmd} -c "from netCDF4 import Dataset; print('ok')"`, (error, stdout) => {
     res.json({
       netcdf4: error ? 'unavailable' : stdout.trim(),
-      lidarDir: process.env.LIDAR_DIR ?? 'uploads/sftp/lidar',
+      lidarDir: process.env.LIDAR_DIR ?? 'uploads/sftp/mini_lidar',
     });
   });
 });

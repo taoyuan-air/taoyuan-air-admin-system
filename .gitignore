@@ -11,10 +11,10 @@ backend/uploads/**
 !backend/uploads/.gitkeep
 !backend/uploads/sftp/
 !backend/uploads/sftp/.gitkeep
-!backend/uploads/sftp/lidar/
-!backend/uploads/sftp/lidar/.gitkeep
-!backend/uploads/sftp/mpl/
-!backend/uploads/sftp/mpl/.gitkeep
+!backend/uploads/sftp/mini_lidar/
+!backend/uploads/sftp/mini_lidar/.gitkeep
+!backend/uploads/sftp/wind_lidar/
+!backend/uploads/sftp/wind_lidar/.gitkeep
 !backend/uploads/sftp/naqo/
 !backend/uploads/sftp/naqo/.gitkeep
 !backend/uploads/tmp/
