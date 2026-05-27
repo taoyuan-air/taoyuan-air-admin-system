@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const LIDAR_DIR    = path.resolve(process.env.LIDAR_DIR ?? 'uploads/sftp/lidar');
+const LIDAR_DIR    = path.resolve(process.env.LIDAR_DIR ?? 'uploads/sftp/mini_lidar');
 const SCRIPTS_DIR  = path.resolve(__dirname, '../../scripts');
 const PYTHON_CMD   = process.env.PYTHON_CMD ?? (process.platform === 'win32' ? 'python' : 'python3');
 
