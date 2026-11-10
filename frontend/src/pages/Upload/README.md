@@ -15,7 +15,7 @@ Step 2  選擇 .csv / .txt 檔案並送出
           station 測站 slug，例如 taoyuan
         回傳 uploadIds
         對每個 uploadId 建立 SSE 連線
-        GET /api/uploads/progress/:uploadId?token=<jwt>
+        GET /api/uploads/progress/:uploadId
 Step 3  顯示完成 / 失敗結果
 ```
 
@@ -67,10 +67,10 @@ Response `202`:
 
 ### GET `/api/uploads/progress/:uploadId`
 
-SSE 連線不支援自訂 header，因此 token 由 query string 傳入：
+Fetch streaming sends Authorization: Bearer in the request header; never put tokens in URLs:
 
 ```text
-GET /api/uploads/progress/1?token=<jwt>
+GET /api/uploads/progress/1
 ```
 
 Event payload:

@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { authenticateJWT } from '../middlewares/auth';
 import { scanStations, runLidarParser } from '../services/lidarService';
 
 const router = Router();
 
 // GET /api/lidar/stations
-router.get('/stations', authenticateJWT, (_req: Request, res: Response): void => {
+router.get('/stations', (_req: Request, res: Response): void => {
   try {
     const stations = scanStations();
     res.json({ stations });
@@ -16,7 +15,7 @@ router.get('/stations', authenticateJWT, (_req: Request, res: Response): void =>
 });
 
 // GET /api/lidar/plot-data
-router.get('/plot-data', authenticateJWT, async (req: Request, res: Response): Promise<void> => {
+router.get('/plot-data', async (req: Request, res: Response): Promise<void> => {
   const { station, start, end, heightMax, panels } = req.query;
 
   if (!station || !start || !end) {
@@ -46,7 +45,7 @@ router.get('/plot-data', authenticateJWT, async (req: Request, res: Response): P
 });
 
 // GET /api/lidar/health
-router.get('/health', authenticateJWT, async (_req: Request, res: Response): Promise<void> => {
+router.get('/health', async (_req: Request, res: Response): Promise<void> => {
   const { exec } = await import('child_process');
   const pythonCmd = process.env.PYTHON_CMD ?? 'python3';
 

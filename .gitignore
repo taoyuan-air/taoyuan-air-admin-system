@@ -1,5 +1,6 @@
 .kiro/
-docs/
+# Local incident documents and one-off cleanup tools are never committed.
+/docs/
 node_modules/
 backend/.env
 backend/node_modules/
@@ -35,3 +36,17 @@ backend/uploads/**
 !backend/uploads/uav/zhongli/.gitkeep
 
 lidar_reference/
+
+.env
+.env.*
+!.env.example
+backend/dist/
+.security-work/
+__pycache__/
+# Private keys / certificates (e.g. SFTP_PRIVATE_KEY_PATH) must never be committed.
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*

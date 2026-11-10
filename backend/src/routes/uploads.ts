@@ -1,10 +1,11 @@
+import { asyncRoute } from '../middlewares/errors';
+import { canAccessUpload, streamUploadProgress } from './uploadProgress';
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import type { Request, Response } from "express";
 import {
-  authenticateJWT,
   requireUploadPermission,
   checkUploadQuota,
 } from "../middlewares/auth";
@@ -35,7 +36,6 @@ const upload = multer({
 });
 
 const authMiddlewares = [
-  authenticateJWT,
   requireUploadPermission,
   checkUploadQuota,
 ];
@@ -171,55 +171,16 @@ router.post(
 );
 
 // GET /api/uploads/progress/:uploadId  (SSE)
-// SSE 不支援自訂 header，允許從 query string 取得 token
-router.get(
-  "/progress/:uploadId",
-  (req: Request, res: Response, next) => {
-    if (req.query.token)
-      req.headers.authorization = `Bearer ${req.query.token}`;
-    next();
-  },
-  authenticateJWT,
-  (req: Request, res: Response) => {
-    const uploadId = parseInt(req.params.uploadId, 10);
-
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.flushHeaders();
-
-    const send = (data: object) =>
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-
-    const interval = setInterval(() => {
-      const state = ProgressService.get(uploadId);
-      if (!state) {
-        send({ uploadId, progress: 0, status: "unknown" });
-        return;
-      }
-      send(state);
-      if (
-        state.status === "completed" ||
-        state.status === "failed" ||
-        state.status === "cancelled"
-      ) {
-        clearInterval(interval);
-        res.end();
-      }
-    }, 1000);
-
-    req.on("close", () => clearInterval(interval));
-  },
-);
+// Fetch streaming supplies Authorization; credentials must never appear in URLs.
+router.get("/progress/:uploadId", asyncRoute(streamUploadProgress));
 
 // DELETE /api/uploads/history/:uploadId
 router.delete(
   "/history/:uploadId",
-  authenticateJWT,
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user!;
-    const uploadId = parseInt(req.params.uploadId, 10);
-    if (Number.isNaN(uploadId)) {
+    const uploadId = Number(req.params.uploadId);
+    if (!Number.isSafeInteger(uploadId) || uploadId < 1) {
       res.status(400).json({ message: "無效的 uploadId" });
       return;
     }
@@ -269,14 +230,21 @@ router.delete(
 // DELETE /api/uploads/:uploadId
 router.delete(
   "/:uploadId",
-  authenticateJWT,
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user!;
-    const uploadId = parseInt(req.params.uploadId, 10);
+    const uploadId = Number(req.params.uploadId);
+    if (!Number.isSafeInteger(uploadId) || uploadId < 1) {
+      res.status(400).json({ error: 'INVALID_UPLOAD_ID' });
+      return;
+    }
 
     const record = await FileUploadRepository.findById(uploadId);
     if (!record) {
       res.status(404).json({ error: ErrorCode.UPLOAD_NOT_FOUND });
+      return;
+    }
+    if (!canAccessUpload(user, record.userId)) {
+      res.status(403).json({ error: ErrorCode.FORBIDDEN });
       return;
     }
     if (record.uploadStatus === "completed") {
@@ -297,7 +265,6 @@ router.delete(
 // GET /api/uploads/history
 router.get(
   "/history",
-  authenticateJWT,
   async (req: Request, res: Response): Promise<void> => {
     const user = req.user!;
     const canViewAll =

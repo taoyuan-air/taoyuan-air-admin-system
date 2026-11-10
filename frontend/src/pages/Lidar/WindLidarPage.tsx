@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Info } from 'lucide-react';
-import WindLidarControls, { type WindPanelKey, ALL_WIND_PANELS, WIND_PANEL_LABELS } from './WindLidarControls';
+import WindLidarControls from './WindLidarControls';
+import { type WindPanelKey, ALL_WIND_PANELS, WIND_PANEL_LABELS } from './windPanels';
 
 function todayTaiwanDate(): string {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });

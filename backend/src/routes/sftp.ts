@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { authenticateJWT } from '../middlewares/auth';
 import { pool } from '../db/pool';
 
 const router = Router();
 
 // GET /api/sftp/logs?source=NAQO&limit=50
-router.get('/logs', authenticateJWT, async (req: Request, res: Response): Promise<void> => {
+router.get('/logs', async (req: Request, res: Response): Promise<void> => {
   const source = req.query.source as string | undefined;
   const limit  = Math.min(parseInt(req.query.limit as string ?? '50', 10), 200);
 
@@ -34,7 +33,7 @@ const SOURCE_CASE_MAP: Record<string, string> = {
   windlidar: 'WindLidar',
 };
 
-router.get('/records/:source', authenticateJWT, async (req: Request, res: Response): Promise<void> => {
+router.get('/records/:source', async (req: Request, res: Response): Promise<void> => {
   const source = SOURCE_CASE_MAP[req.params.source.toLowerCase()];
   if (!source) {
     res.status(400).json({ error: 'INVALID_SOURCE', message: '不支援的來源' });
@@ -81,7 +80,7 @@ router.get('/records/:source', authenticateJWT, async (req: Request, res: Respon
 });
 
 // GET /api/sftp/last-sync — 各來源最後同步時間
-router.get('/last-sync', authenticateJWT, async (_req: Request, res: Response): Promise<void> => {
+router.get('/last-sync', async (_req: Request, res: Response): Promise<void> => {
   const [sftpResult, uavResult] = await Promise.all([
     pool.query(
       `SELECT source, MAX(received_at) AS last_sync

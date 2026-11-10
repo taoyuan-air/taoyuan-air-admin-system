@@ -76,7 +76,7 @@ Response `201`：
 ```json
 {
   "user": { ... },
-  "temporaryPassword": "REMOVED_REVOKED_SECRET"
+  "temporaryPassword": "<one-time-generated-password>"
 }
 ```
 

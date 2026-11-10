@@ -21,28 +21,45 @@ export function useUploadProgress(
   useEffect(() => {
     if (!token || uploadIds.length === 0) return;
 
-    const sources = uploadIds.map((id) => {
-      const es = new EventSource(
-        `${apiUrl(`/api/uploads/progress/${id}`)}?token=${encodeURIComponent(token)}`,
-      );
-
-      es.onmessage = (e) => {
-        const data: ProgressEvent = JSON.parse(e.data);
-        onUpdateRef.current(data);
-        if (
-          data.status === "completed" ||
-          data.status === "failed" ||
-          data.status === "cancelled"
-        ) {
-          es.close();
+    const controllers = uploadIds.map((id) => {
+      const controller = new AbortController();
+      void (async () => {
+        const response = await fetch(apiUrl(`/api/uploads/progress/${id}`), {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok || !response.body) return;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        try {
+          while (!controller.signal.aborted) {
+            const { done, value } = await reader.read();
+            if (done || controller.signal.aborted) break;
+            buffer += decoder.decode(value, { stream: true });
+            let end: number;
+            while ((end = buffer.indexOf("\n\n")) !== -1) {
+              const event = buffer.slice(0, end);
+              buffer = buffer.slice(end + 2);
+              const line = event.split("\n").find((part) => part.startsWith("data: "));
+              if (!line) continue;
+              const data: ProgressEvent = JSON.parse(line.slice(6));
+              onUpdateRef.current(data);
+              if (["completed", "failed", "cancelled"].includes(data.status)) {
+                controller.abort();
+                return;
+              }
+            }
+          }
+        } finally {
+          await reader.cancel().catch(() => undefined);
+          reader.releaseLock();
         }
-      };
-
-      es.onerror = () => es.close();
-
-      return es;
+      })().catch(() => controller.abort());
+      return controller;
     });
 
-    return () => sources.forEach((es) => es.close());
+    return () => controllers.forEach((controller) => controller.abort());
   }, [uploadIds, token]);
 }

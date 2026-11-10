@@ -29,7 +29,7 @@ taoyuan-air-admin/
 
 ## 環境需求
 
-- Node.js 18+
+- Node.js 22.12+（22.x；根目錄 `.nvmrc` 與 CI 使用 Node 22）
 - npm
 - Docker Desktop（如果要跑 PostgreSQL 容器）
 
@@ -45,8 +45,14 @@ DB_NAME=
 DB_USER=
 DB_PASSWORD=
 JWT_SECRET=
+JWT_ISSUER=taoyuan-air-admin
+JWT_AUDIENCE=taoyuan-air-admin-web
 UPLOAD_DIR=
 ```
+
+`JWT_SECRET` 必須是各環境獨立、至少 32 bytes 的安全亂數；不得重用已外露的舊密鑰。設定缺失會阻止後端啟動。
+
+既有環境升級認證修復時，先套用 `backend/migrations/010_add_token_version.sql`，再設定 `JWT_ISSUER`、`JWT_AUDIENCE` 並部署後端。既有 migration runner 會重跑所有 SQL，請勿未複核便對既有資料庫執行全部 migration。此次升級會拒絕舊版 token，使用者需重新登入。
 
 ## 一次性初始化
 
@@ -82,7 +88,7 @@ npm run migrate
 npm run seed
 ```
 
-執行後會建立一個 `system_admin` 帳號，並輸出臨時密碼。**首次登入後必須修改密碼。**
+透過 secret manager 一次性注入 `INITIAL_ADMIN_PASSWORD`（至少 20 字元、含英文與數字、最多 72 bytes），不要放進 CLI 參數或 Git。執行後建立 `system_admin`，不輸出密碼，不修改既有帳號。**首次登入後必須修改密碼。**
 
 ## 日常啟動（完整前後端測試）
 
@@ -172,11 +178,9 @@ VITE_API_BASE_URL=
 
 ```env
 VITE_DEMO_MODE=true
-VITE_MOCK_ADMIN_PASSWORD=<your-mock-admin-password>
-VITE_MOCK_MANAGER_PASSWORD=<your-mock-manager-password>
 ```
 
-Demo 模式下登入與上傳會走前端 mock 流程，不依賴後端服務。可參考 `frontend/.env.example` 了解可設定的環境變數。
+Demo 是公開展示，帳號 admin / manager / viewer，密碼欄填任意文字，請勿輸入真實密碼。不要將機密存入 `VITE_*`。正式建置必須明確設定 `VITE_DEMO_MODE=false` 與 HTTPS API 網址（同源代理填 `/`，且主機必須設定 `/api` 代理）。可參考 `frontend/.env.example`。
 
 ## 備註
 

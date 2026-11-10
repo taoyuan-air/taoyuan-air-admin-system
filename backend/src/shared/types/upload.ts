@@ -62,6 +62,7 @@ export enum ErrorCode {
 
 // JWT Payload
 export interface JwtPayload {
+  tokenVersion: number;
   userId: number;
   username: string;
   roleCode: RoleCode;

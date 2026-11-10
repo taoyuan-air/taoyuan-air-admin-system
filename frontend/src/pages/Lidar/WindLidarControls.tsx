@@ -3,16 +3,7 @@ import Select from 'react-select';
 import DatePicker from '../../components/DatePicker';
 import type { CSSProperties } from 'react';
 
-export type WindPanelKey = 'wind_speed' | 'wind_direction' | 'turbulence' | 'cnr';
-
-export const WIND_PANEL_LABELS: Record<WindPanelKey, string> = {
-  wind_speed:      '風速剖面',
-  wind_direction:  '風向剖面',
-  turbulence:      '亂流強度',
-  cnr:             'CNR',
-};
-
-export const ALL_WIND_PANELS: WindPanelKey[] = ['wind_speed', 'wind_direction', 'turbulence', 'cnr'];
+import { ALL_WIND_PANELS, WIND_PANEL_LABELS, type WindPanelKey } from './windPanels';
 
 const HEIGHT_OPTIONS = [
   { value: 0.2, label: '0.2 km' },

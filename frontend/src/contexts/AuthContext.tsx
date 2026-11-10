@@ -14,6 +14,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function readStoredSession(): { user: User | null; token: string | null } {
+  try {
+    const token = sessionStorage.getItem("auth_token");
+    const saved = sessionStorage.getItem("auth_user");
+    if (token && saved && (isDemoMode ? token === "demo-token" : token !== "demo-token")) {
+      const user: User = JSON.parse(saved);
+      if (user && typeof user === "object" && Number.isSafeInteger(user.userId)
+          && ["system_admin", "data_manager", "readonly"].includes(user.roleCode)) {
+        return { user, token };
+      }
+    }
+    sessionStorage.removeItem("auth_token");
+    sessionStorage.removeItem("auth_user");
+  } catch {
+    // Corrupt or unavailable browser storage must not crash the login page.
+  }
+  return { user: null, token: null };
+}
+
 const MOCK_USERS: User[] = [
   {
     userId: 1,
@@ -56,34 +75,15 @@ const MOCK_USERS: User[] = [
   },
 ];
 
-const MOCK_PASSWORD_BY_USERNAME: Record<string, string | undefined> = {
-  admin: import.meta.env.VITE_MOCK_ADMIN_PASSWORD,
-  manager: import.meta.env.VITE_MOCK_MANAGER_PASSWORD,
-  viewer: import.meta.env.VITE_MOCK_VIEWER_PASSWORD,
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = sessionStorage.getItem("auth_user");
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [token, setToken] = useState<string | null>(() =>
-    sessionStorage.getItem("auth_token"),
-  );
+  const [initialSession] = useState(readStoredSession);
+  const [user, setUser] = useState<User | null>(initialSession.user);
+  const [token, setToken] = useState<string | null>(initialSession.token);
 
   const login = async (username: string, password: string) => {
     if (isDemoMode) {
       const found = MOCK_USERS.find((u) => u.username === username);
       if (!found) throw new Error("帳號或密碼錯誤");
-
-      const expectedPassword = MOCK_PASSWORD_BY_USERNAME[found.username];
-      if (!expectedPassword) {
-        throw new Error(
-          "Demo 模式尚未設定該帳號密碼，請設定 VITE_MOCK_*_PASSWORD。",
-        );
-      }
-      if (password !== expectedPassword) throw new Error("帳號或密碼錯誤");
 
       const userWithoutPassword = found;
       setUser(userWithoutPassword);

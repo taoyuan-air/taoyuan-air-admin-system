@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { authenticateJWT, requireRole } from '../middlewares/auth';
+import { requireRole } from '../middlewares/auth';
 import { pool } from '../db/pool';
 
 const router = Router();
@@ -73,7 +73,7 @@ function validateBody(body: Record<string, unknown>): string | null {
 
 // ─── GET /api/incidents ───────────────────────────────────────
 
-router.get('/', authenticateJWT, async (req: Request, res: Response): Promise<void> => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   const { source, incident_type, status, from, to } = req.query;
   const page   = Math.max(1, parseInt(req.query.page  as string ?? '1',  10));
   const limit  = Math.min(200, parseInt(req.query.limit as string ?? '50', 10));
@@ -142,7 +142,6 @@ router.get('/', authenticateJWT, async (req: Request, res: Response): Promise<vo
 
 router.post(
   '/',
-  authenticateJWT,
   requireRole('data_manager', 'system_admin'),
   async (req: Request, res: Response): Promise<void> => {
     const err = validateBody(req.body);
@@ -176,7 +175,7 @@ router.post(
 
 // ─── GET /api/incidents/:id ───────────────────────────────────
 
-router.get('/:id', authenticateJWT, async (req: Request, res: Response): Promise<void> => {
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: 'INVALID_ID', message: 'id 必須為整數' });
@@ -195,7 +194,6 @@ router.get('/:id', authenticateJWT, async (req: Request, res: Response): Promise
 
 router.put(
   '/:id',
-  authenticateJWT,
   requireRole('data_manager', 'system_admin'),
   async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(req.params.id, 10);
@@ -244,7 +242,6 @@ router.put(
 
 router.patch(
   '/:id/resolve',
-  authenticateJWT,
   requireRole('data_manager', 'system_admin'),
   async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(req.params.id, 10);
@@ -276,7 +273,6 @@ router.patch(
 
 router.delete(
   '/:id',
-  authenticateJWT,
   requireRole('system_admin'),
   async (req: Request, res: Response): Promise<void> => {
     const id = parseInt(req.params.id, 10);

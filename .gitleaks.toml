@@ -1,0 +1,19 @@
+title = "Taoyuan Air secret detection"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "assigned-auth-secret"
+description = "Nonempty database, JWT, seed or frontend password assignment"
+regex = '''(?im)(?:DB_PASSWORD|JWT_SECRET|INITIAL_ADMIN_PASSWORD|VITE_MOCK_[A-Z_]*PASSWORD|TEMP_PASSWORD)[ \t]*[:=][ \t]*["']?([^\s"'`;]{8,})'''
+secretGroup = 1
+[[rules.allowlists]]
+regexTarget = "secret"
+regexes = [
+  '''^process\.env\.[A-Z_]+!?$''',
+  '''^import\.meta\.env\.[A-Z_]+$''',
+  '''^randomBytes\([0-9]+\)\.toString\($''',
+  '''^<(?:OLD_VALUE|old-value|your-mock-(?:admin|manager|viewer)-password)>$''',
+  '''^REMOVED_REVOKED_SECRET$''',
+]

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '../security';
 import { pool } from '../db/pool';
 import { ErrorCode, UPLOAD_ALLOWED_ROLES } from '../shared/types/upload';
 import type { JwtPayload, RoleCode } from '../shared/types/upload';
@@ -12,21 +12,47 @@ declare global {
   }
 }
 
-export function authenticateJWT(req: Request, res: Response, next: NextFunction): void {
+export async function findTokenUser(token: string, claims = verifyToken(token)): Promise<JwtPayload | null> {
+  const { rows } = await pool.query(
+    `SELECT user_id, username, role_code, upload_quota_gb, must_change_password,
+            is_active, token_version FROM admin_users WHERE user_id = $1`, [claims.userId],
+  );
+  const user = rows[0];
+  if (!user || !user.is_active || user.token_version !== claims.tokenVersion
+      || !['system_admin', 'data_manager', 'readonly'].includes(user.role_code)) return null;
+  return {
+    userId: user.user_id, username: user.username, roleCode: user.role_code,
+    uploadQuotaGb: user.upload_quota_gb, mustChangePassword: user.must_change_password,
+    tokenVersion: user.token_version,
+  };
+}
+
+export async function authenticateJWT(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: ErrorCode.UNAUTHORIZED, message: 'Token 缺失或格式錯誤' });
     return;
   }
 
-  const token = authHeader.slice(7);
+  let claims: { userId: number; tokenVersion: number };
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
-    req.user = payload;
-    next();
+    claims = verifyToken(authHeader.slice(7));
   } catch {
     res.status(401).json({ error: ErrorCode.UNAUTHORIZED, message: 'Token 無效或已過期' });
+    return;
   }
+  try {
+    const user = await findTokenUser(authHeader.slice(7), claims);
+    if (!user) {
+      res.status(401).json({ error: ErrorCode.UNAUTHORIZED, message: '請重新登入' });
+      return;
+    }
+    req.user = user;
+  } catch {
+    res.status(503).json({ error: 'AUTH_UNAVAILABLE', message: '暫時無法驗證帳號狀態' });
+    return;
+  }
+  next();
 }
 
 export function requirePasswordChanged(req: Request, res: Response, next: NextFunction): void {

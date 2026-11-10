@@ -9,8 +9,12 @@ import sftpRouter from './routes/sftp';
 import lidarRouter from './routes/lidar';
 import incidentsRouter from './routes/incidents';
 import { fetchAndIngestNaqo } from './jobs/naqoFetcher';
+import { jwtSettings } from './config';
+import { authenticateJWT, requirePasswordChanged } from './middlewares/auth';
+import { apiErrorHandler } from './middlewares/errors';
 
 dotenv.config();
+jwtSettings();
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -19,6 +23,7 @@ app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
+app.use('/api', authenticateJWT, requirePasswordChanged);
 app.use('/api/uploads', uploadRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/sftp', sftpRouter);
@@ -26,6 +31,7 @@ app.use('/api/lidar', lidarRouter);
 app.use('/api/incidents', incidentsRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.use(apiErrorHandler);
 
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);

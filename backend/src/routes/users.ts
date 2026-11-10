@@ -1,13 +1,25 @@
+import { asyncRoute } from '../middlewares/errors';
+import { generateTempPassword } from '../security';
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import type { Request, Response } from 'express';
 import { pool } from '../db/pool';
-import { authenticateJWT, requirePasswordChanged, requireRole } from '../middlewares/auth';
+import { requirePasswordChanged, requireRole } from '../middlewares/auth';
 
 const router = Router();
 
 // 所有 users 路由都需要登入 + 已完成密碼修改 + system_admin 角色
-router.use(authenticateJWT, requirePasswordChanged, requireRole('system_admin'));
+router.use(requirePasswordChanged, requireRole('system_admin'));
+
+// Reject non-numeric ids up front instead of letting PostgreSQL raise a 500.
+router.param('id', (_req, res, next, id: string) => {
+  const n = Number(id);
+  if (!Number.isSafeInteger(n) || n < 1) {
+    res.status(400).json({ error: 'INVALID_ID', message: 'id 必須為正整數' });
+    return;
+  }
+  next();
+});
 
 const ROLE_NAMES: Record<string, string> = {
   system_admin: '系統管理員',
@@ -32,28 +44,16 @@ function toUserDto(row: Record<string, unknown>) {
   };
 }
 
-function generateTempPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  // 確保至少含一個數字和一個字母
-  if (!/\d/.test(result)) result = result.slice(0, 7) + '4';
-  if (!/[A-Za-z]/.test(result)) result = 'A' + result.slice(1);
-  return result;
-}
-
 // GET /api/users
-router.get('/', async (_req: Request, res: Response): Promise<void> => {
+router.get('/', asyncRoute(async (_req: Request, res: Response): Promise<void> => {
   const { rows } = await pool.query(
     'SELECT * FROM admin_users ORDER BY created_at ASC',
   );
   res.json({ users: rows.map(toUserDto) });
-});
+}));
 
 // POST /api/users
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', asyncRoute(async (req: Request, res: Response): Promise<void> => {
   const { username, email, fullName, roleCode, organization, uploadQuotaGb } =
     req.body as {
       username: string;
@@ -85,14 +85,15 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     [username, email, hash, fullName, roleCode, organization ?? null, uploadQuotaGb],
   );
 
+  res.setHeader('Cache-Control', 'no-store');
   res.status(201).json({
     user: toUserDto(rows[0]),
     temporaryPassword: tempPassword,
   });
-});
+}));
 
 // PATCH /api/users/:id
-router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
+router.patch('/:id', asyncRoute(async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const { fullName, email, roleCode, organization, uploadQuotaGb } =
     req.body as {
@@ -110,6 +111,8 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
          role_code       = COALESCE($3, role_code),
          organization    = COALESCE($4, organization),
          upload_quota_gb = COALESCE($5, upload_quota_gb),
+         -- Revoke sessions only on a real role change, so editing your own profile does not log you out.
+         token_version   = token_version + CASE WHEN $3::text IS NOT NULL AND $3::text <> role_code THEN 1 ELSE 0 END,
          updated_at      = NOW()
      WHERE user_id = $6
      RETURNING *`,
@@ -122,15 +125,19 @@ router.patch('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 
   res.json({ user: toUserDto(rows[0]) });
-});
+}));
 
 // PATCH /api/users/:id/active
-router.patch('/:id/active', async (req: Request, res: Response): Promise<void> => {
+router.patch('/:id/active', asyncRoute(async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { isActive } = req.body as { isActive: boolean };
+  const { isActive } = (req.body ?? {}) as { isActive: unknown };
+  if (typeof isActive !== 'boolean') {
+    res.status(400).json({ error: 'INVALID_INPUT', message: 'isActive 必須為布林值' });
+    return;
+  }
 
   const { rows } = await pool.query(
-    'UPDATE admin_users SET is_active = $1, updated_at = NOW() WHERE user_id = $2 RETURNING *',
+    'UPDATE admin_users SET is_active = $1, token_version = token_version + 1, updated_at = NOW() WHERE user_id = $2 RETURNING *',
     [isActive, id],
   );
 
@@ -140,10 +147,10 @@ router.patch('/:id/active', async (req: Request, res: Response): Promise<void> =
   }
 
   res.json({ user: toUserDto(rows[0]) });
-});
+}));
 
 // DELETE /api/users/:id
-router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id', asyncRoute(async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
 
   const { rowCount } = await pool.query(
@@ -157,6 +164,6 @@ router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 
   res.json({ success: true });
-});
+}));
 
 export default router;

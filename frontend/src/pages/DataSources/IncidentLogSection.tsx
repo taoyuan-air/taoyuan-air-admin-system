@@ -173,7 +173,6 @@ export default function IncidentLogSection() {
     if (isDemoMode) return;
     let cancelled = false;
     const token = sessionStorage.getItem('auth_token');
-    setLoading(true);
     fetch(apiUrl('/api/incidents?limit=200'), {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -238,6 +237,7 @@ export default function IncidentLogSection() {
       });
       setPage(1);
     }
+    setLoading(true);
     setRefreshKey(k => k + 1);
   };
 
@@ -253,6 +253,7 @@ export default function IncidentLogSection() {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` },
     });
+    setLoading(true);
     setRefreshKey(k => k + 1);
   };
 
@@ -272,7 +273,8 @@ export default function IncidentLogSection() {
   const toggleOne = (id: number) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Wind, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { isDemoMode } from "../../config/api";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -77,6 +78,7 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {isDemoMode && <p>公開展示：帳號 admin、manager 或 viewer；密碼可填任意文字，請勿輸入真實密碼。展示帳號沒有正式 API 權限。</p>}
           <div style={{ marginBottom: 16 }}>
             <label
               style={{
